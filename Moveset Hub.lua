@@ -95,7 +95,7 @@ TzeTab:Button({
     Desc = "Dribble, Trap Shot, Riptide, Intercept, Nutmeg Steal + Flow. F4 to disable.",
     Icon = "star",
     Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/jonathabejose-alt/AbyssUI/refs/heads/main/Messi%20style", true))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/jonathabejose-alt/AbyssUI/refs/heads/main/Messi", true))()
     end,
 })
 TzeTab:Divider({})
