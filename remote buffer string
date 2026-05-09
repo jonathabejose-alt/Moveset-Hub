@@ -1,4 +1,4 @@
--- ==================== REMOTE BUFFER SYSTEM v4 (DATOS REALES) ====================
+-- ==================== REMOTE BUFFER SYSTEM v5 - CON TSPECIAL ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
@@ -6,17 +6,16 @@ local char = player.Character or player.CharacterAdded:Wait()
 
 -- ===== COMANDOS REALES DE BYTENET =====
 local BYTENET = {
-    use = 44,           -- bytenet_use (comando principal)
-    findBall = 43,      -- bytenet_findBall
-    changeStyle = 61,   -- bytenet_changeStyle
-    clientCFrame = 9,   -- bytenet_clientCFrame
-    replication = 21,   -- bytenet_replication
-    replication2 = 19,  -- bytenet_replication2
-    MoveDirection = 12, -- bytenet_MoveDirection
-    useEmote = 41,      -- bytenet_useEmote
+    use = 44,
+    findBall = 43,
+    changeStyle = 61,
+    clientCFrame = 9,
+    replication = 21,
+    replication2 = 19,
+    MoveDirection = 12,
+    useEmote = 41,
 }
 
--- ===== BUFFERS =====
 local buffers = {
     use = string.char(BYTENET.use),
     findBall = string.char(BYTENET.findBall),
@@ -27,20 +26,7 @@ local buffers = {
 -- ===== HOTBAR =====
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 
--- Crear skills 6-8 clonando skill5
-local function createSkillButtons(count)
-    for i = 6, count do
-        if not hotbar.Backpack.Hotbar:FindFirstChild("skill"..i) then
-            local template = hotbar.Backpack.Hotbar.skill5:Clone()
-            template.Name = "skill"..i
-            template.Base.Number.Text = tostring(i)
-            template.Visible = true
-            template.Parent = hotbar.Backpack.Hotbar
-        end
-    end
-end
-
--- Nombre de skill
+-- ===== SKILLS =====
 local function setSkillName(slot, name, reuse)
     local skill = hotbar.Backpack.Hotbar:FindFirstChild("skill"..slot)
     if skill then
@@ -52,7 +38,6 @@ local function setSkillName(slot, name, reuse)
     end
 end
 
--- Cooldown visual
 local function showCooldown(slot, duration)
     local skill = hotbar.Backpack.Hotbar:FindFirstChild("skill"..slot)
     if skill and skill:FindFirstChild("Cooldown") then
@@ -66,112 +51,93 @@ local function showCooldown(slot, duration)
     end
 end
 
--- ===== AWAKENING BAR (ESTRUCTURA REAL) =====
-local function setAwakening(config)
-    -- MagicHealth > Health > Frame > UIGradient (barra principal)
-    -- MagicHealth > Awakening (nombre abajo)
-    -- MagicHealth > TextLabel (descripción)
+-- ===== TSPECIAL CUSTOM =====
+local function createTSpecial(slot, name, size, position)
+    local buttons = hotbar.Backpack.Hotbar
     
-    if config.topText then
-        hotbar.MagicHealth.TextLabel.Visible = true
-        hotbar.MagicHealth.TextLabel.Text = config.topText
+    -- Buscar template
+    local template = nil
+    for i = 1, 10 do
+        local skill = buttons:FindFirstChild("skill"..i)
+        if skill then template = skill; break end
+    end
+    if not template then
+        template = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
+    end
+    if not template then
+        print("❌ No hay template para Tspecial")
+        return nil
     end
     
+    -- Eliminar si ya existe
+    local tspecialName = "TspecialerX_" .. slot
+    local existing = hotbar.Backpack.Hotbar:FindFirstChild(tspecialName)
+    if existing then existing:Destroy() end
+    
+    -- Clonar
+    local tspecial = template:Clone()
+    tspecial.Name = tspecialName
+    tspecial.Base.ToolName.Text = name or "Special"
+    tspecial.Base.Number.Text = tostring(slot)
+    tspecial.Base.Reuse.Text = "Special"
+    tspecial.Base.Reuse.Visible = true
+    tspecial.Visible = true
+    
+    -- Tamaño reducido
+    local sz = size or 35
+    tspecial.Size = UDim2.new(0, sz, 0, sz)
+    
+    -- Posición
+    if position then
+        tspecial.Position = position
+    end
+    
+    tspecial.Parent = hotbar.Backpack.Hotbar
+    print("✅ Tspecial creada: " .. name)
+    return tspecial
+end
+
+local function connectTSpecial(slot, callback)
+    local tspecial = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot)
+    if tspecial and tspecial.Base and callback then
+        tspecial.Base.MouseButton1Down:Connect(callback)
+        print("✅ Callback conectado a Tspecial " .. slot)
+    end
+end
+
+-- ===== AWAKENING =====
+local function setAwakening(config)
     if config.bottomText then
         hotbar.MagicHealth.Awakening.Text = config.bottomText
     end
-    
     if config.color1 and config.color2 then
-        -- Health > Frame > UIGradient
         hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, config.color1),
             ColorSequenceKeypoint.new(1, config.color2)
         })
     end
-    
-    if config.description then
-        hotbar.MagicHealth.saeText.Text = config.description or ""
-    end
 end
 
--- ===== COMANDOS BUFFER =====
-local function sendUse(cmd, data)
+-- ===== COMANDOS =====
+local function kickBall(power, curve, direction)
     remote:FireServer(buffer.fromstring(buffers["use"] .. string.char(1)), {
-        command = cmd,
-        data = data or {}
+        command = "kick",
+        data = {power = power or 100, curve = curve or false, direction = direction}
     })
 end
 
--- Ball
 local function grabBall()
     remote:FireServer(buffer.fromstring(buffers["findBall"]))
 end
 
-local function kickBall(power, curve, direction)
-    sendUse("kick", {
-        power = power or 100,
-        curve = curve or false,
-        direction = direction
-    })
-end
-
--- Skills
-local function createSkill(slot, name, cd, reuse)
-    createSkillButtons(slot)
-    setSkillName(slot, name, reuse)
-end
-
-local function useSkill(slot, cd)
-    sendUse("skill"..slot)
-    if cd then showCooldown(slot, cd) end
-end
-
--- Movement
-local function dash(direction, distance)
-    sendUse("dash", {
-        direction = direction,
-        distance = distance or 50
-    })
-end
-
--- State
-local function setStun(duration)
-    if char and char.state then
-        char.state.stun.Value = true
-        task.delay(duration, function()
-            if char and char.state then
-                char.state.stun.Value = false
-            end
-        end)
-    end
-end
-
-local function setHipHeight(height)
-    if char then
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if hum then hum.HipHeight = height end
-    end
-end
-
--- Style
-local function changeStyle(style)
-    remote:FireServer(buffer.fromstring(buffers["changeStyle"]), {style})
-end
-
 -- ===== EXPORTAR =====
 return {
-    createSkillButtons = createSkillButtons,
     setSkillName = setSkillName,
     showCooldown = showCooldown,
+    createTSpecial = createTSpecial,
+    connectTSpecial = connectTSpecial,
     setAwakening = setAwakening,
-    grabBall = grabBall,
     kickBall = kickBall,
-    createSkill = createSkill,
-    useSkill = useSkill,
-    dash = dash,
-    setStun = setStun,
-    setHipHeight = setHipHeight,
-    changeStyle = changeStyle,
-    sendUse = sendUse,
+    grabBall = grabBall,
     buffers = buffers,
 }
