@@ -1,4 +1,4 @@
--- ==================== REMOTE BUFFER SYSTEM v5 - CON TSPECIAL ====================
+-- ==================== REMOTE BUFFER SYSTEM v5 - TSPECIAL CON POSICIÓN ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
@@ -25,10 +25,11 @@ local buffers = {
 
 -- ===== HOTBAR =====
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
+local buttons = hotbar.Backpack.Hotbar
 
--- ===== SKILLS =====
+-- ===== SKILLS BÁSICAS =====
 local function setSkillName(slot, name, reuse)
-    local skill = hotbar.Backpack.Hotbar:FindFirstChild("skill"..slot)
+    local skill = buttons:FindFirstChild("skill"..slot)
     if skill then
         skill.Base.ToolName.Text = name or ""
         if reuse then
@@ -39,7 +40,11 @@ local function setSkillName(slot, name, reuse)
 end
 
 local function showCooldown(slot, duration)
-    local skill = hotbar.Backpack.Hotbar:FindFirstChild("skill"..slot)
+    local skill = buttons:FindFirstChild("skill"..slot)
+    if not skill then
+        -- Buscar también en Tspecials
+        skill = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot)
+    end
     if skill and skill:FindFirstChild("Cooldown") then
         local cd = skill.Cooldown
         cd.Visible = true
@@ -52,12 +57,10 @@ local function showCooldown(slot, duration)
 end
 
 -- ===== TSPECIAL CUSTOM =====
-local function createTSpecial(slot, name, size, position)
-    local buttons = hotbar.Backpack.Hotbar
-    
+local function createTSpecial(slot, name, position, size)
     -- Buscar template
     local template = nil
-    for i = 1, 10 do
+    for i = 1, 5 do
         local skill = buttons:FindFirstChild("skill"..i)
         if skill then template = skill; break end
     end
@@ -78,22 +81,22 @@ local function createTSpecial(slot, name, size, position)
     local tspecial = template:Clone()
     tspecial.Name = tspecialName
     tspecial.Base.ToolName.Text = name or "Special"
-    tspecial.Base.Number.Text = tostring(slot)
+    tspecial.Base.Number.Text = ""
     tspecial.Base.Reuse.Text = "Special"
     tspecial.Base.Reuse.Visible = true
     tspecial.Visible = true
     
-    -- Tamaño reducido
-    local sz = size or 35
+    -- Tamaño (por defecto 60x60)
+    local sz = size or 60
     tspecial.Size = UDim2.new(0, sz, 0, sz)
     
-    -- Posición
+    -- Posición personalizada
     if position then
         tspecial.Position = position
     end
     
     tspecial.Parent = hotbar.Backpack.Hotbar
-    print("✅ Tspecial creada: " .. name)
+    print("✅ Tspecial creada: " .. name .. " | Pos: " .. tostring(position))
     return tspecial
 end
 
@@ -102,7 +105,9 @@ local function connectTSpecial(slot, callback)
     if tspecial and tspecial.Base and callback then
         tspecial.Base.MouseButton1Down:Connect(callback)
         print("✅ Callback conectado a Tspecial " .. slot)
+        return true
     end
+    return false
 end
 
 -- ===== AWAKENING =====
@@ -118,7 +123,7 @@ local function setAwakening(config)
     end
 end
 
--- ===== COMANDOS =====
+-- ===== COMANDOS BUFFER =====
 local function kickBall(power, curve, direction)
     remote:FireServer(buffer.fromstring(buffers["use"] .. string.char(1)), {
         command = "kick",
@@ -130,14 +135,28 @@ local function grabBall()
     remote:FireServer(buffer.fromstring(buffers["findBall"]))
 end
 
+local function changeStyle(style)
+    remote:FireServer(buffer.fromstring(buffers["changeStyle"]), {style})
+end
+
 -- ===== EXPORTAR =====
 return {
+    -- Skills
     setSkillName = setSkillName,
     showCooldown = showCooldown,
+    
+    -- Tspecial
     createTSpecial = createTSpecial,
     connectTSpecial = connectTSpecial,
+    
+    -- Awakening
     setAwakening = setAwakening,
+    
+    -- Comandos
     kickBall = kickBall,
     grabBall = grabBall,
+    changeStyle = changeStyle,
+    
+    -- Raw
     buffers = buffers,
 }
