@@ -57,12 +57,73 @@
    Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
 ]]
 
+--[[
+    ____  ____  _  _   __  ____  ____    ____  _  _  ____  ____  ____  ____    ____  ____  ____  __  __ _   ___    _  _  ____ 
+   (  _ \(  __)( \/ ) /  \(_  _)(  __)  (  _ \/ )( \(  __)(  __)(  __)(  _ \  / ___)(_  _)(  _ \(  )(  ( \ / __)  / )( \(___ \
+    )   / ) _) / \/ \(  O ) )(   ) _)    ) _ () \/ ( ) _)  ) _)  ) _)  )   /  \___ \  )(   )   / )( /    /( (_ \  \ \/ / / __/
+   (__\_)(____)\_)(_/ \__/ (__) (____)  (____/\____/(__)  (__)  (____)(__\_)  (____/ (__) (__\_)(__)\_)__) \___/   \__/ (____)
+   
+   Remote Buffer String v2  |  2026-05-09  |  Azure Latch
+   
+   A lightweight buffer string system for creating custom movesets.
+   Designed to be used with any character in Azure Latch.
+   
+   FUNCTIONS:
+   
+   grabBall(config)
+     - config.loop (bool): Keep grabbing until you have the ball
+     - config.maxAttempts (number): Attempts per grab
+   
+   stopGrab()
+     - Stops any active grab loop
+   
+   setStun(duration, disableRotate)
+     - duration (number): Seconds to stun
+     - disableRotate (bool): Prevent character rotation
+   
+   passBall(config)
+     - config.power (number): Shot power (auto-calculated if teammate found)
+     - config.maxDistance (number): Max search distance for teammate
+     - Automatically finds the closest teammate and passes to them
+   
+   kickBall(config)
+     - config.power (number): Shot power (default: 100)
+     - config.direction (Vector3): Direction to kick
+     - config.curve (string): "Left" or "Right" for curved shots
+   
+   setSkillName(slot, name, reuse)
+     - slot (number): Skill slot (1-5)
+     - name (string): Display name
+     - reuse (string): Reuse text (e.g. "Ball", "Shot", "Movement")
+   
+   showCooldown(slot, duration)
+     - slot (number): Skill slot
+     - duration (number): Cooldown in seconds
+   
+   setupTSpecial(config)
+     - config.name (string): Button name
+     - config.position (string): "left", "right", "top", "bottom" or UDim2
+     - config.size (number): Button size in pixels
+     - config.callback (function): Function to call on click
+   
+   setAwakening(config)
+     - config.bottomText (string): Awakening name
+     - config.color1 (Color3): Bar color start
+     - config.color2 (Color3): Bar color end
+   
+   changeStyle(style)
+     - style (string): Style name (e.g. "exe", "messi", "yukimiya")
+   
+   Authors: jonathabejose-alt & Daffy_734
+   Github: https://github.com/jonathabejose-alt/Moveset-Hub
+   Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
+]]
+
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- ===== BUFFERS =====
 local buffers = {}
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
 local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
@@ -117,6 +178,13 @@ local function grabBall(config)
     
     if conf.loop then
         grabConnection = RunService.Heartbeat:Connect(doGrab)
+    end
+end
+
+local function stopGrab()
+    if grabConnection then
+        grabConnection:Disconnect()
+        grabConnection = nil
     end
 end
 
@@ -269,6 +337,7 @@ end
 
 return {
     grabBall = grabBall,
+    stopGrab = stopGrab,
     setStun = setStun,
     passBall = passBall,
     kickBall = kickBall,
