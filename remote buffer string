@@ -1,0 +1,59 @@
+local tbl = {}
+
+local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
+
+-- Comandos básicos
+local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
+local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+
+-- Nuevos comandos
+local kickNum = info:match('"bytenet_kick"%s*:%s*(%d+)')
+local dribbleNum = info:match('"bytenet_dribble"%s*:%s*(%d+)')
+local stealNum = info:match('"bytenet_steal"%s*:%s*(%d+)')
+local passNum = info:match('"bytenet_pass"%s*:%s*(%d+)')
+local shootNum = info:match('"bytenet_shoot"%s*:%s*(%d+)')
+local tackleNum = info:match('"bytenet_tackle"%s*:%s*(%d+)')
+local skillNum = info:match('"bytenet_skill"%s*:%s*(%d+)')
+
+-- Básicos
+if baseNum then
+    tbl.base = string.char(tonumber(baseNum)) .. string.char(1)
+end
+if grabballNum then
+    tbl.grabball = string.char(tonumber(grabballNum))
+end
+
+-- Nuevos
+if kickNum then
+    tbl.kick = string.char(tonumber(kickNum)) .. string.char(1)
+end
+if dribbleNum then
+    tbl.dribble = string.char(tonumber(dribbleNum)) .. string.char(2)
+end
+if stealNum then
+    tbl.steal = string.char(tonumber(stealNum))
+end
+if passNum then
+    tbl.pass = string.char(tonumber(passNum)) .. string.char(1)
+end
+if shootNum then
+    tbl.shoot = string.char(tonumber(shootNum)) .. string.char(1)
+end
+if tackleNum then
+    tbl.tackle = string.char(tonumber(tackleNum))
+end
+if skillNum then
+    tbl.skill = string.char(tonumber(skillNum)) .. string.char(1)
+end
+
+local folder = Instance.new("Folder")
+folder.Name = "BUFFERSTRINGS"
+
+for i, v in pairs(tbl) do
+    local val = Instance.new("StringValue")
+    val.Value = v
+    val.Name = i
+    val.Parent = folder
+end
+
+folder.Parent = game.Lighting
