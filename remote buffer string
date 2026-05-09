@@ -1,49 +1,36 @@
+-- ==================== REMOTE BUFFER STRING COMPLETO ====================
 local tbl = {}
 
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
 
--- Comandos básicos
-local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
-local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+-- Comandos esenciales
+local useNum = info:match('"bytenet_use"%s*:%s*(%d+)')
+local findBallNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+local moveDirNum = info:match('"bytenet_MoveDirection"%s*:%s*(%d+)')
 
--- Nuevos comandos
-local kickNum = info:match('"bytenet_kick"%s*:%s*(%d+)')
-local dribbleNum = info:match('"bytenet_dribble"%s*:%s*(%d+)')
-local stealNum = info:match('"bytenet_steal"%s*:%s*(%d+)')
-local passNum = info:match('"bytenet_pass"%s*:%s*(%d+)')
-local shootNum = info:match('"bytenet_shoot"%s*:%s*(%d+)')
-local tackleNum = info:match('"bytenet_tackle"%s*:%s*(%d+)')
-local skillNum = info:match('"bytenet_skill"%s*:%s*(%d+)')
+if useNum then
+    local base = string.char(tonumber(useNum))
+    
+    -- Skills básicas (1-4, las que ya existen)
+    tbl.skill1 = base .. string.char(1)
+    tbl.skill2 = base .. string.char(2)
+    tbl.skill3 = base .. string.char(3)
+    tbl.skill4 = base .. string.char(4)
+    
+    -- Skills extras (5-9, las que se pueden crear)
+    tbl.skill5 = base .. string.char(5)
+    tbl.skill6 = base .. string.char(6)
+    tbl.skill7 = base .. string.char(7)
+    tbl.skill8 = base .. string.char(8)
+    tbl.skill9 = base .. string.char(9)
+end
 
--- Básicos
-if baseNum then
-    tbl.base = string.char(tonumber(baseNum)) .. string.char(1)
-end
-if grabballNum then
-    tbl.grabball = string.char(tonumber(grabballNum))
+if findBallNum then
+    tbl.grabball = string.char(tonumber(findBallNum))
 end
 
--- Nuevos
-if kickNum then
-    tbl.kick = string.char(tonumber(kickNum)) .. string.char(1)
-end
-if dribbleNum then
-    tbl.dribble = string.char(tonumber(dribbleNum)) .. string.char(2)
-end
-if stealNum then
-    tbl.steal = string.char(tonumber(stealNum))
-end
-if passNum then
-    tbl.pass = string.char(tonumber(passNum)) .. string.char(1)
-end
-if shootNum then
-    tbl.shoot = string.char(tonumber(shootNum)) .. string.char(1)
-end
-if tackleNum then
-    tbl.tackle = string.char(tonumber(tackleNum))
-end
-if skillNum then
-    tbl.skill = string.char(tonumber(skillNum)) .. string.char(1)
+if moveDirNum then
+    tbl.movedir = string.char(tonumber(moveDirNum))
 end
 
 local folder = Instance.new("Folder")
