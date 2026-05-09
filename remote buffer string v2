@@ -1,5 +1,5 @@
 --[[
-      ____  ________  _______  ____________   ____  __  ________________________     _______________  _____   ________   _    __   ___ 
+       ____  ________  _______  ____________   ____  __  ________________________     _______________  _____   ________   _    __   ___ 
       / __ \/ ____/  |/  / __ \/_  __/ ____/  / __ )/ / / / ____/ ____/ ____/ __ \   / ___/_  __/ __ \/  _/ | / / ____/  | |  / /  |__ \
      / /_/ / __/ / /|_/ / / / / / / / __/    / __  / / / / /_  / /_  / __/ / /_/ /   \__ \ / / / /_/ // //  |/ / / __    | | / /   __/ /
     / _, _/ /___/ /  / / /_/ / / / / /___   / /_/ / /_/ / __/ / __/ / /___/ _, _/   ___/ // / / _, _// // /|  / /_/ /    | |/ /   / __/ 
@@ -141,9 +141,8 @@ local function passBall(config)
     local direction, power = nil, conf.power or 50
     if closestTeammate and closestTeammate.Character then
         local targetRoot = closestTeammate.Character.HumanoidRootPart
-        local dist = (root.Position - targetRoot.Position).Magnitude
         direction = (targetRoot.Position - root.Position).Unit
-        power = math.clamp(dist / 1.4, 18, 95)
+        power = math.clamp((targetRoot.Position - root.Position).Magnitude / 1.4, 18, 95)
     else direction = conf.direction or root.CFrame.LookVector end
     remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, true, direction}})
 end
@@ -178,7 +177,13 @@ local function showCooldown(slot, duration)
             if child.Name:find("Tspecial") or child.Name == "skill"..slot then skill = child; break end
         end
     end
-    if skill and skill:FindFirstChild("Cooldown") then
+    if skill then
+        if not skill:FindFirstChild("Cooldown") then
+            local cd = Instance.new("Frame")
+            cd.Name = "Cooldown"; cd.Size = UDim2.new(1, 0, 1, 0)
+            cd.BackgroundColor3 = Color3.fromRGB(0, 0, 0); cd.BackgroundTransparency = 0.5
+            cd.Visible = false; cd.Parent = skill
+        end
         local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0)
         game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
         task.delay(duration, function() cd.Visible = false; cooldowns[slot] = false end)
@@ -191,14 +196,15 @@ end
 
 local function setupTSpecial(config)
     local conf = config or {}
-    local name = conf.name or "Special"; local reuse = conf.reuse or "Special"
-    local callback = conf.callback; local size = conf.size or 50
+    local name = conf.name or "Special"
+    local callback = conf.callback
+    local size = conf.size or 50
     local position = conf.position or "bottom"
     local tBtn = buttons:FindFirstChild("Tspecialer") or buttons:FindFirstChild("TspecialerX")
     if not tBtn then
         local template = buttons.skill1
         if not template then return end
-        tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Base.Number.Text = ""; tBtn.Parent = buttons
+        tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Parent = buttons
     end
     tBtn.Size = UDim2.new(0, size, 0, size)
     if position == "left" then tBtn.Position = UDim2.new(0, 5, 0.5, -size/2)
@@ -206,11 +212,8 @@ local function setupTSpecial(config)
     elseif position == "top" then tBtn.Position = UDim2.new(0.5, -size/2, 0, 5)
     elseif position == "bottom" then tBtn.Position = UDim2.new(0.5, -size/2, 1, -size-5)
     else tBtn.Position = position end
-    tBtn.Base.ToolName.Text = name; tBtn.Base.Reuse.Text = reuse; tBtn.Base.Reuse.Visible = true
-    if callback then
-        local event = tBtn:FindFirstChild("MouseButton1Click") or tBtn.Base:FindFirstChild("MouseButton1Down")
-        if event then event:Connect(callback) end
-    end
+    tBtn.Base.ToolName.Text = name; tBtn.Base.Reuse.Text = "Special"; tBtn.Base.Reuse.Visible = true
+    if callback then tBtn.Base.MouseButton1Down:Connect(callback) end
 end
 
 local function setAwakening(config)
