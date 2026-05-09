@@ -129,12 +129,30 @@ end
 local function setStun(duration, disableRotate)
     local char = player.Character
     if not char then return end
+    
     char.state.stun.Value = true
-    if disableRotate then char:SetAttribute("disableRotate", true) end
+    
+    if disableRotate then
+        char:SetAttribute("disableRotate", true)
+    end
+    
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = 0
+        hum.JumpPower = 0
+    end
+    
     task.delay(duration or 0.5, function()
         if char then
             char.state.stun.Value = false
-            if disableRotate then char:SetAttribute("disableRotate", false) end
+            if disableRotate then
+                char:SetAttribute("disableRotate", false)
+            end
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum.WalkSpeed = 40
+                hum.JumpPower = 50
+            end
         end
     end)
 end
