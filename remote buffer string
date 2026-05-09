@@ -1,6 +1,62 @@
--- TZE YOU ARE A GENIUS
+--[[
+      ____  ________  _______  ____________   ____  __  ________________________     _______________  _____   ________   _    __   ___ 
+      / __ \/ ____/  |/  / __ \/_  __/ ____/  / __ )/ / / / ____/ ____/ ____/ __ \   / ___/_  __/ __ \/  _/ | / / ____/  | |  / /  |__ \
+     / /_/ / __/ / /|_/ / / / / / / / __/    / __  / / / / /_  / /_  / __/ / /_/ /   \__ \ / / / /_/ // //  |/ / / __    | | / /   __/ /
+    / _, _/ /___/ /  / / /_/ / / / / /___   / /_/ / /_/ / __/ / __/ / /___/ _, _/   ___/ // / / _, _// // /|  / /_/ /    | |/ /   / __/ 
+   /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|   /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
+                                                                                                                                     
+   
+   A lightweight buffer string system for creating custom movesets.
+   Designed to be used with any character in Azure Latch.
+   
+   FUNCTIONS:
+   
+   grabBall(config)
+     - config.loop (bool): Keep grabbing until you have the ball
+     - config.maxAttempts (number): Attempts per grab
+   
+   setStun(duration, disableRotate)
+     - duration (number): Seconds to stun
+     - disableRotate (bool): Prevent character rotation
+   
+   passBall(config)
+     - config.power (number): Shot power (auto-calculated if teammate found)
+     - config.maxDistance (number): Max search distance for teammate
+     - Automatically finds the closest teammate and passes to them
+   
+   kickBall(config)
+     - config.power (number): Shot power (default: 100)
+     - config.direction (Vector3): Direction to kick
+     - config.curve (string): "Left" or "Right" for curved shots
+   
+   setSkillName(slot, name, reuse)
+     - slot (number): Skill slot (1-5)
+     - name (string): Display name
+     - reuse (string): Reuse text (e.g. "Ball", "Shot", "Movement")
+   
+   showCooldown(slot, duration)
+     - slot (number): Skill slot
+     - duration (number): Cooldown in seconds
+   
+   setupTSpecial(config)
+     - config.name (string): Button name
+     - config.position (string): "left", "right", "top", "bottom" or UDim2
+     - config.size (number): Button size in pixels
+     - config.callback (function): Function to call on click
+   
+   setAwakening(config)
+     - config.bottomText (string): Awakening name
+     - config.color1 (Color3): Bar color start
+     - config.color2 (Color3): Bar color end
+   
+   changeStyle(style)
+     - style (string): Style name (e.g. "exe", "messi", "yukimiya")
+   
+   Authors: jonathabejose-alt & Daffy_734
+   Github: https://github.com/jonathabejose-alt/Moveset-Hub
+   Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
+]]
 
--- ==================== REMOTE BUFFER SYSTEM v6 FINAL ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
@@ -15,11 +71,9 @@ local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
 if baseNum then buffers.base = string.char(tonumber(baseNum)) .. string.char(1) end
 if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
 
--- ===== HOTBAR =====
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
 
--- ===== GRAB BALL (ESTILO EXE - RENDERSTEPPED) =====
 local grabConnection = nil
 
 local function grabBall(config)
@@ -28,99 +82,63 @@ local function grabBall(config)
     if grabConnection then
         grabConnection:Disconnect()
         grabConnection = nil
-        if player.Character then
-            player.Character.Humanoid.HipHeight = 0
-            player.Character.HumanoidRootPart.Anchored = false
-        end
         return
     end
     
     local char = player.Character
-    if not char then return end
-    
-    if char:FindFirstChild("Ball") then return end
+    if not char or char:FindFirstChild("Ball") then return end
     
     local root = char:WaitForChild("HumanoidRootPart")
-    local humanoid = char:WaitForChild("Humanoid")
     local targetPart = workspace.Terrain:FindFirstChild("Ball")
     if not targetPart then return end
     
     local savedRotation = root.CFrame - root.Position
-    local heightDiff = targetPart.Position.Y - root.Position.Y
     
-    if conf.minHeight and heightDiff < conf.minHeight then return end
-    
-    if conf.suspension then
-        humanoid.HipHeight = 15
-        task.delay(conf.suspensionTime or 0.5, function()
-            if char then char.Humanoid.HipHeight = 0 end
-        end)
+    local function doGrab()
+        local c = player.Character
+        if not c or c:FindFirstChild("Ball") then
+            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
+            return
+        end
+        local r = c:FindFirstChild("HumanoidRootPart")
+        local ball = workspace.Terrain:FindFirstChild("Ball")
+        if not r or not ball then return end
+        
+        local pos = ball.Position
+        local correctedPos = Vector3.new(pos.X, pos.Y - 3, pos.Z)
+        r.CFrame = CFrame.new(correctedPos) * savedRotation
+        
+        for _ = 1, (conf.maxAttempts or 3) do
+            remote:FireServer(buffer.fromstring(buffers["grabball"]))
+        end
     end
     
-    local startTime = tick()
-    local timeout = conf.timeout or 1
+    doGrab()
     
-    grabConnection = RunService.RenderStepped:Connect(function()
-        if not root or not targetPart then
-            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
-            return
-        end
-        
-        if tick() - startTime >= timeout then
-            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
-            return
-        end
-        
-        if char:FindFirstChild("Ball") then
-            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
-            return
-        end
-        
-        if (targetPart.Position - root.Position).Magnitude > 10 then
-            local pos = targetPart.Position
-            local correctedPos = Vector3.new(pos.X, pos.Y - 4, pos.Z)
-            local newCF = CFrame.new(correctedPos) * savedRotation
-            root.CFrame = newCF
-            RunService.RenderStepped:Wait()
-            root.CFrame = newCF
-            
-            task.spawn(function()
-                for _ = 1, (conf.maxAttempts or 5) do
-                    remote:FireServer(buffer.fromstring(buffers["grabball"]))
-                end
-            end)
-        end
-    end)
+    if conf.loop then
+        grabConnection = RunService.Heartbeat:Connect(doGrab)
+    end
 end
 
--- ===== STUN =====
 local function setStun(duration, disableRotate)
     local char = player.Character
     if not char then return end
     char.state.stun.Value = true
-    if disableRotate then
-        char:SetAttribute("disableRotate", true)
-    end
+    if disableRotate then char:SetAttribute("disableRotate", true) end
     task.delay(duration or 0.5, function()
         if char then
             char.state.stun.Value = false
-            if disableRotate then
-                char:SetAttribute("disableRotate", false)
-            end
+            if disableRotate then char:SetAttribute("disableRotate", false) end
         end
     end)
 end
 
--- ===== PASS BALL (ESTILO MESSI - BUSCA COMPAÑERO MÁS CERCANO) =====
 local function passBall(config)
     local conf = config or {}
     local char = player.Character
     if not char or not char:FindFirstChild("Ball") then return end
-    
     local root = char.HumanoidRootPart
-    local humanoid = char.Humanoid
     
-    -- Buscar compañero más cercano
     local closestTeammate = nil
     local shortestDistance = conf.maxDistance or 180
     
@@ -129,15 +147,10 @@ local function passBall(config)
         if not p.Character then continue end
         if p.Team ~= player.Team then continue end
         if p.Team == game.Teams.lobby then continue end
-        
         local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
         if not targetRoot then continue end
-        
         local dist = (root.Position - targetRoot.Position).Magnitude
-        if dist < shortestDistance then
-            shortestDistance = dist
-            closestTeammate = p
-        end
+        if dist < shortestDistance then shortestDistance = dist; closestTeammate = p end
     end
     
     local direction
@@ -152,16 +165,14 @@ local function passBall(config)
         direction = conf.direction or root.CFrame.LookVector
     end
     
-    remote:FireServer(buffer.fromstring(buffers["base"]), {
-        {"kick", power, true, direction}
-    })
+    remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, true, direction}})
 end
 
--- ===== KICK =====
 local function kickBall(config)
     local conf = config or {}
     local power = conf.power or 100
     local direction = conf.direction
+    local curve = conf.curve
     
     if not direction then
         local char = player.Character
@@ -172,41 +183,42 @@ local function kickBall(config)
         end
     end
     
-    remote:FireServer(buffer.fromstring(buffers["base"]), {
-        {"kick", power, conf.curve or false, direction}
-    })
+    if curve == "Left" then
+        direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(25), 0)).LookVector
+    elseif curve == "Right" then
+        direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(-25), 0)).LookVector
+    end
+    
+    remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, false, direction}})
 end
 
--- ===== SKILLS =====
 local function setSkillName(slot, name, reuse)
     local skill = buttons:FindFirstChild("skill"..slot)
     if skill then
         skill.Base.ToolName.Text = name or ""
-        if reuse then
-            skill.Base.Reuse.Text = reuse
-            skill.Base.Reuse.Visible = true
-        end
+        if reuse then skill.Base.Reuse.Text = reuse; skill.Base.Reuse.Visible = true end
     end
 end
 
 local function showCooldown(slot, duration)
     local skill = buttons:FindFirstChild("skill"..slot)
-    if not skill then
-        skill = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot)
-    end
+    if not skill then skill = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot) end
     if skill and skill:FindFirstChild("Cooldown") then
         local cd = skill.Cooldown
-        cd.Visible = true
-        cd.Size = UDim2.new(1, 0, -1, 0)
-        game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-            Size = UDim2.new(1, 0, 0, 0)
-        }):Play()
+        cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0)
+        game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
         task.delay(duration, function() cd.Visible = false end)
     end
 end
 
--- ===== TSPECIAL =====
-local function setupTSpecial(name, reuse, callback)
+local function setupTSpecial(config)
+    local conf = config or {}
+    local name = conf.name or "Special"
+    local reuse = conf.reuse or "Special"
+    local callback = conf.callback
+    local size = conf.size or 50
+    local position = conf.position or "bottom"
+    
     local tBtn = buttons:FindFirstChild("Tspecialer") or buttons:FindFirstChild("TspecialerX")
     if not tBtn then
         local template = buttons.skill1
@@ -214,24 +226,35 @@ local function setupTSpecial(name, reuse, callback)
         tBtn = template:Clone()
         tBtn.Name = "Tspecialer"
         tBtn.Base.Number.Text = ""
-        tBtn.Size = UDim2.new(0, 60, 0, 60)
-        tBtn.Position = UDim2.new(0, 10, 0, 80)
         tBtn.Parent = buttons
     end
-    tBtn.Base.ToolName.Text = name or "Special"
-    tBtn.Base.Reuse.Text = reuse or "Special"
+    
+    tBtn.Size = UDim2.new(0, size, 0, size)
+    
+    if typeof(position) == "UDim2" then
+        tBtn.Position = position
+    elseif position == "left" then
+        tBtn.Position = UDim2.new(0, 5, 0.5, -size/2)
+    elseif position == "right" then
+        tBtn.Position = UDim2.new(1, -size-5, 0.5, -size/2)
+    elseif position == "top" then
+        tBtn.Position = UDim2.new(0.5, -size/2, 0, 5)
+    else
+        tBtn.Position = UDim2.new(0.5, -size/2, 1, -size-5)
+    end
+    
+    tBtn.Base.ToolName.Text = name
+    tBtn.Base.Reuse.Text = reuse
     tBtn.Base.Reuse.Visible = true
+    
     if callback then
         local event = tBtn:FindFirstChild("MouseButton1Click") or tBtn.Base:FindFirstChild("MouseButton1Down")
         if event then event:Connect(callback) end
     end
 end
 
--- ===== AWAKENING =====
 local function setAwakening(config)
-    if config.bottomText then
-        hotbar.MagicHealth.Awakening.Text = config.bottomText
-    end
+    if config.bottomText then hotbar.MagicHealth.Awakening.Text = config.bottomText end
     if config.color1 and config.color2 then
         hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0, config.color1),
@@ -240,12 +263,10 @@ local function setAwakening(config)
     end
 end
 
--- ===== STYLE =====
 local function changeStyle(style)
     player:SetAttribute("style", style)
 end
 
--- ===== EXPORTAR =====
 return {
     grabBall = grabBall,
     setStun = setStun,
