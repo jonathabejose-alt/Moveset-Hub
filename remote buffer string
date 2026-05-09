@@ -1,31 +1,18 @@
--- ==================== REMOTE BUFFER STRING ====================
 local tbl = {}
 
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
 
-local useNum = info:match('"bytenet_use"%s*:%s*(%d+)')
-local findBallNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
-local moveDirNum = info:match('"bytenet_MoveDirection"%s*:%s*(%d+)')
+local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
+local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
 
-if useNum then
-    local base = string.char(tonumber(useNum))
-    tbl.skill1 = base .. string.char(1)
-    tbl.skill2 = base .. string.char(2)
-    tbl.skill3 = base .. string.char(3)
-    tbl.skill4 = base .. string.char(4)
-    tbl.skill5 = base .. string.char(5)
-    tbl.skill6 = base .. string.char(6)
-    tbl.skill7 = base .. string.char(7)
-    tbl.skill8 = base .. string.char(8)
-    tbl.skill9 = base .. string.char(9)
+if baseNum then
+    local base = string.char(tonumber(baseNum))
+    tbl.base = base .. string.char(1)
+    tbl.createskill = base .. string.char(99)  -- Comando para crear skills
 end
 
-if findBallNum then
-    tbl.grabball = string.char(tonumber(findBallNum))
-end
-
-if moveDirNum then
-    tbl.movedir = string.char(tonumber(moveDirNum))
+if grabballNum then
+    tbl.grabball = string.char(tonumber(grabballNum))
 end
 
 local folder = Instance.new("Folder")
