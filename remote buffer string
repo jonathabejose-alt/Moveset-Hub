@@ -1,33 +1,183 @@
--- ==================== REMOTE BUFFER SYSTEM v5 - TSPECIAL CON POSICIÓN ====================
+-- ==================== REMOTE BUFFER SYSTEM v6 ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
 
--- ===== COMANDOS REALES DE BYTENET =====
-local BYTENET = {
-    use = 44,
-    findBall = 43,
-    changeStyle = 61,
-    clientCFrame = 9,
-    replication = 21,
-    replication2 = 19,
-    MoveDirection = 12,
-    useEmote = 41,
-}
+-- ===== BUFFERS DESDE EL JUEGO (sin Pastebin) =====
+local buffers = {}
+local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
+local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
+local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
 
-local buffers = {
-    use = string.char(BYTENET.use),
-    findBall = string.char(BYTENET.findBall),
-    changeStyle = string.char(BYTENET.changeStyle),
-    clientCFrame = string.char(BYTENET.clientCFrame),
-}
+if baseNum then buffers.base = string.char(tonumber(baseNum)) .. string.char(1) end
+if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
 
 -- ===== HOTBAR =====
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
 
--- ===== SKILLS BÁSICAS =====
+-- ===== GRAB BALL (CORREGIDO) =====
+local grabLoop = nil
+local function grabBall(config)
+    -- config = {loop = true/false, suspension = true/false, studs = 10}
+    
+    if grabLoop then
+        grabLoop:Disconnect()
+        grabLoop = nil
+        print("🔴 Grab loop detenido")
+        return
+    end
+    
+    local studs = config and config.studs or 10
+    local useSuspension = config and config.suspension ~= false
+    
+    local char = player.Character
+    if not char then return end
+    local root = char.HumanoidRootPart
+    local humanoid = char.Humanoid
+    
+    -- Suspensión (elevar un poco)
+    if useSuspension then
+        humanoid.HipHeight = studs
+    end
+    
+    local function doGrab()
+        local char = player.Character
+        if not char then return end
+        if char:FindFirstChild("Ball") then return end
+        
+        -- Intentar agarrar el balón
+        for _ = 1, 5 do
+            remote:FireServer(buffer.fromstring(buffers["grabball"]))
+            task.wait(0.05)
+            if char:FindFirstChild("Ball") then
+                if useSuspension then humanoid.HipHeight = 0 end
+                return
+            end
+        end
+        
+        -- Teletransportar cerca del balón si está lejos
+        local ball = workspace.Terrain:FindFirstChild("Ball")
+        if ball and (root.Position - ball.Position).Magnitude > studs then
+            root.CFrame = CFrame.new(ball.Position + Vector3.new(0, studs, 0))
+        end
+    end
+    
+    if config and config.loop then
+        -- Modo loop
+        grabLoop = game:GetService("RunService").Heartbeat:Connect(function()
+            doGrab()
+        end)
+        print("🟢 Grab loop INICIADO | studs=" .. studs .. " | suspension=" .. tostring(useSuspension))
+    else
+        -- Una sola vez
+        doGrab()
+        print("✅ Grab simple")
+    end
+end
+
+local function stopGrab()
+    if grabLoop then
+        grabLoop:Disconnect()
+        grabLoop = nil
+        if player.Character then
+            player.Character.Humanoid.HipHeight = 0
+        end
+        print("🔴 Grab loop DETENIDO")
+    end
+end
+
+-- ===== STUN (CORREGIDO) =====
+local function setStun(duration, disableRotate)
+    local char = player.Character
+    if not char then return end
+    
+    char.state.stun.Value = true
+    if disableRotate then
+        char:SetAttribute("disableRotate", true)
+    end
+    
+    task.delay(duration or 0.5, function()
+        if char then
+            char.state.stun.Value = false
+            if disableRotate then
+                char:SetAttribute("disableRotate", false)
+            end
+        end
+    end)
+end
+
+-- ===== PASS (NUEVO COMANDO) =====
+local function passBall(power, curve, targetPlayer)
+    local char = player.Character
+    if not char then return end
+    if not char:FindFirstChild("Ball") then
+        print("❌ Sin balón para pasar")
+        return
+    end
+    
+    local root = char.HumanoidRootPart
+    local direction
+    
+    if targetPlayer then
+        -- Pasar a un jugador específico
+        local target = targetPlayer.Character
+        if target and target:FindFirstChild("HumanoidRootPart") then
+            direction = (target.HumanoidRootPart.Position - root.Position).Unit
+        else
+            direction = root.CFrame.LookVector
+        end
+    else
+        -- Pasar hacia adelante
+        direction = root.CFrame.LookVector
+    end
+    
+    remote:FireServer(buffer.fromstring(buffers["base"]), {
+        {"kick", power or 50, curve or false, direction}
+    })
+    print("✅ Pass enviado | power=" .. (power or 50))
+end
+
+-- ===== AUTO PASS (loop) =====
+local passLoop = nil
+local function autoPass(power, curve, interval)
+    if passLoop then
+        passLoop:Disconnect()
+        passLoop = nil
+        print("🔴 Auto pass detenido")
+        return
+    end
+    
+    passLoop = game:GetService("RunService").Heartbeat:Connect(function()
+        local char = player.Character
+        if not char or not char:FindFirstChild("Ball") then return end
+        local root = char.HumanoidRootPart
+        remote:FireServer(buffer.fromstring(buffers["base"]), {
+            {"kick", power or 50, curve or false, root.CFrame.LookVector}
+        })
+    end)
+    print("🟢 Auto pass INICIADO | power=" .. (power or 50))
+end
+
+local function stopPass()
+    if passLoop then
+        passLoop:Disconnect()
+        passLoop = nil
+        print("🔴 Auto pass DETENIDO")
+    end
+end
+
+-- ===== KICK =====
+local function kickBall(power, curve, direction)
+    local char = player.Character
+    if not char then return end
+    local root = char.HumanoidRootPart
+    remote:FireServer(buffer.fromstring(buffers["base"]), {
+        {"kick", power or 100, curve or false, direction or root.CFrame.LookVector * 100}
+    })
+end
+
+-- ===== SKILLS =====
 local function setSkillName(slot, name, reuse)
     local skill = buttons:FindFirstChild("skill"..slot)
     if skill then
@@ -42,8 +192,7 @@ end
 local function showCooldown(slot, duration)
     local skill = buttons:FindFirstChild("skill"..slot)
     if not skill then
-        -- Buscar también en Tspecials
-        skill = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot)
+        skill = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer_" .. slot)
     end
     if skill and skill:FindFirstChild("Cooldown") then
         local cd = skill.Cooldown
@@ -56,58 +205,29 @@ local function showCooldown(slot, duration)
     end
 end
 
--- ===== TSPECIAL CUSTOM =====
-local function createTSpecial(slot, name, position, size)
-    -- Buscar template
-    local template = nil
-    for i = 1, 5 do
-        local skill = buttons:FindFirstChild("skill"..i)
-        if skill then template = skill; break end
-    end
-    if not template then
-        template = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
-    end
-    if not template then
-        print("❌ No hay template para Tspecial")
-        return nil
-    end
+-- ===== TSPECIAL =====
+local function setupTSpecial(name, reuse, callback)
+    local tBtn = buttons:FindFirstChild("Tspecialer") or buttons:FindFirstChild("TspecialerX")
     
-    -- Eliminar si ya existe
-    local tspecialName = "TspecialerX_" .. slot
-    local existing = hotbar.Backpack.Hotbar:FindFirstChild(tspecialName)
-    if existing then existing:Destroy() end
-    
-    -- Clonar
-    local tspecial = template:Clone()
-    tspecial.Name = tspecialName
-    tspecial.Base.ToolName.Text = name or "Special"
-    tspecial.Base.Number.Text = ""
-    tspecial.Base.Reuse.Text = "Special"
-    tspecial.Base.Reuse.Visible = true
-    tspecial.Visible = true
-    
-    -- Tamaño (por defecto 60x60)
-    local sz = size or 60
-    tspecial.Size = UDim2.new(0, sz, 0, sz)
-    
-    -- Posición personalizada
-    if position then
-        tspecial.Position = position
+    if not tBtn then
+        local template = buttons.skill1
+        if not template then return end
+        tBtn = template:Clone()
+        tBtn.Name = "Tspecialer"
+        tBtn.Base.Number.Text = ""
+        tBtn.Size = UDim2.new(0, 60, 0, 60)
+        tBtn.Position = UDim2.new(0, 10, 0, 80)
+        tBtn.Parent = buttons
     end
     
-    tspecial.Parent = hotbar.Backpack.Hotbar
-    print("✅ Tspecial creada: " .. name .. " | Pos: " .. tostring(position))
-    return tspecial
-end
-
-local function connectTSpecial(slot, callback)
-    local tspecial = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot)
-    if tspecial and tspecial.Base and callback then
-        tspecial.Base.MouseButton1Down:Connect(callback)
-        print("✅ Callback conectado a Tspecial " .. slot)
-        return true
+    tBtn.Base.ToolName.Text = name or "Special"
+    tBtn.Base.Reuse.Text = reuse or "Special"
+    tBtn.Base.Reuse.Visible = true
+    
+    if callback then
+        local event = tBtn:FindFirstChild("MouseButton1Click") or tBtn.Base:FindFirstChild("MouseButton1Down")
+        if event then event:Connect(callback) end
     end
-    return false
 end
 
 -- ===== AWAKENING =====
@@ -123,38 +243,39 @@ local function setAwakening(config)
     end
 end
 
--- ===== COMANDOS BUFFER =====
-local function kickBall(power, curve, direction)
-    remote:FireServer(buffer.fromstring(buffers["use"] .. string.char(1)), {
-        command = "kick",
-        data = {power = power or 100, curve = curve or false, direction = direction}
-    })
-end
-
-local function grabBall()
-    remote:FireServer(buffer.fromstring(buffers["findBall"]))
-end
-
+-- ===== STYLE =====
 local function changeStyle(style)
-    remote:FireServer(buffer.fromstring(buffers["changeStyle"]), {style})
+    player:SetAttribute("style", style)
 end
 
 -- ===== EXPORTAR =====
 return {
+    -- Grab
+    grabBall = grabBall,
+    stopGrab = stopGrab,
+    
+    -- Stun
+    setStun = setStun,
+    
+    -- Pass
+    passBall = passBall,
+    autoPass = autoPass,
+    stopPass = stopPass,
+    
+    -- Kick
+    kickBall = kickBall,
+    
     -- Skills
     setSkillName = setSkillName,
     showCooldown = showCooldown,
     
     -- Tspecial
-    createTSpecial = createTSpecial,
-    connectTSpecial = connectTSpecial,
+    setupTSpecial = setupTSpecial,
     
     -- Awakening
     setAwakening = setAwakening,
     
-    -- Comandos
-    kickBall = kickBall,
-    grabBall = grabBall,
+    -- Style
     changeStyle = changeStyle,
     
     -- Raw
