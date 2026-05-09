@@ -167,7 +167,11 @@ end
 
 local function showCooldown(slot, duration)
     local skill = buttons:FindFirstChild("skill"..slot)
-    if not skill then skill = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot) end
+    if not skill then
+        for _, child in pairs(hotbar.Backpack.Hotbar:GetChildren()) do
+            if child.Name:find("Tspecial") then skill = child; break end
+        end
+    end
     if skill and skill:FindFirstChild("Cooldown") then
         local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0)
         game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
