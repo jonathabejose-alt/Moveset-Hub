@@ -88,8 +88,7 @@ local function grabBall(config)
         local r = c:FindFirstChild("HumanoidRootPart")
         local ball = workspace.Terrain:FindFirstChild("Ball")
         if not r or not ball then return end
-        local pos = ball.Position
-        local correctedPos = Vector3.new(pos.X, pos.Y - 3, pos.Z)
+        local pos = ball.Position; local correctedPos = Vector3.new(pos.X, pos.Y - 3, pos.Z)
         r.CFrame = CFrame.new(correctedPos) * savedRotation
         for _ = 1, (conf.maxAttempts or 3) do remote:FireServer(buffer.fromstring(buffers["grabball"])) end
     end
@@ -104,15 +103,23 @@ end
 local function setStun(duration, disableRotate)
     local char = player.Character
     if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
     if disableRotate then char:SetAttribute("disableRotate", true) end
+    if hum then hum.WalkSpeed = 0; hum.JumpPower = 0; hum.PlatformStand = true end
+    if root then root.Anchored = true end
     local startTime = tick()
     while tick() - startTime < (duration or 0.5) do
         if not char or not char.Parent then break end
         if char.state then char.state.stun.Value = true end
         task.wait(0.03)
     end
-    if char and char.state then char.state.stun.Value = false end
-    if disableRotate then char:SetAttribute("disableRotate", false) end
+    if char then
+        if char.state then char.state.stun.Value = false end
+        if disableRotate then char:SetAttribute("disableRotate", false) end
+        if hum then hum.WalkSpeed = 40; hum.JumpPower = 50; hum.PlatformStand = false end
+        if root then root.Anchored = false end
+    end
 end
 
 local function passBall(config)
@@ -137,17 +144,13 @@ local function passBall(config)
         local dist = (root.Position - targetRoot.Position).Magnitude
         direction = (targetRoot.Position - root.Position).Unit
         power = math.clamp(dist / 1.4, 18, 95)
-    else
-        direction = conf.direction or root.CFrame.LookVector
-    end
+    else direction = conf.direction or root.CFrame.LookVector end
     remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, true, direction}})
 end
 
 local function kickBall(config)
     local conf = config or {}
-    local power = conf.power or 100
-    local direction = conf.direction
-    local curve = conf.curve
+    local power = conf.power or 100; local direction = conf.direction; local curve = conf.curve
     if not direction then
         local char = player.Character
         if char and char:FindFirstChild("HumanoidRootPart") then direction = char.HumanoidRootPart.CFrame.LookVector * power
@@ -165,18 +168,25 @@ local function setSkillName(slot, name, reuse)
     end
 end
 
+local cooldowns = {}
 local function showCooldown(slot, duration)
+    if cooldowns[slot] then return end
+    cooldowns[slot] = true
     local skill = buttons:FindFirstChild("skill"..slot)
     if not skill then
         for _, child in pairs(hotbar.Backpack.Hotbar:GetChildren()) do
-            if child.Name:find("Tspecial") then skill = child; break end
+            if child.Name:find("Tspecial") or child.Name == "skill"..slot then skill = child; break end
         end
     end
     if skill and skill:FindFirstChild("Cooldown") then
         local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0)
         game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
-        task.delay(duration, function() cd.Visible = false end)
+        task.delay(duration, function() cd.Visible = false; cooldowns[slot] = false end)
     end
+end
+
+local function isOnCooldown(slot)
+    return cooldowns[slot] == true
 end
 
 local function setupTSpecial(config)
@@ -191,11 +201,11 @@ local function setupTSpecial(config)
         tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Base.Number.Text = ""; tBtn.Parent = buttons
     end
     tBtn.Size = UDim2.new(0, size, 0, size)
-    if typeof(position) == "UDim2" then tBtn.Position = position
-    elseif position == "left" then tBtn.Position = UDim2.new(0, 5, 0.5, -size/2)
+    if position == "left" then tBtn.Position = UDim2.new(0, 5, 0.5, -size/2)
     elseif position == "right" then tBtn.Position = UDim2.new(1, -size-5, 0.5, -size/2)
     elseif position == "top" then tBtn.Position = UDim2.new(0.5, -size/2, 0, 5)
-    else tBtn.Position = UDim2.new(0.5, -size/2, 1, -size-5) end
+    elseif position == "bottom" then tBtn.Position = UDim2.new(0.5, -size/2, 1, -size-5)
+    else tBtn.Position = position end
     tBtn.Base.ToolName.Text = name; tBtn.Base.Reuse.Text = reuse; tBtn.Base.Reuse.Visible = true
     if callback then
         local event = tBtn:FindFirstChild("MouseButton1Click") or tBtn.Base:FindFirstChild("MouseButton1Down")
@@ -219,7 +229,7 @@ end
 return {
     grabBall = grabBall, stopGrab = stopGrab, setStun = setStun,
     passBall = passBall, kickBall = kickBall,
-    setSkillName = setSkillName, showCooldown = showCooldown,
+    setSkillName = setSkillName, showCooldown = showCooldown, isOnCooldown = isOnCooldown,
     setupTSpecial = setupTSpecial, setAwakening = setAwakening,
     changeStyle = changeStyle, buffers = buffers,
 }
