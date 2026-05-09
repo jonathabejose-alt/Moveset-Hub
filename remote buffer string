@@ -1,28 +1,290 @@
-local tbl = {}
+-- ==================== REMOTE BUFFER SYSTEM v2 ====================
+local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
+local buffers = {}
 
+-- Obtener números de comando del juego
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
-
 local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
 local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
 
 if baseNum then
     local base = string.char(tonumber(baseNum))
-    tbl.base = base .. string.char(1)
-    tbl.createskill = base .. string.char(99)  -- Comando para crear skills
+    buffers.base = base .. string.char(1)
+    buffers.createskill = base .. string.char(99)
 end
 
 if grabballNum then
-    tbl.grabball = string.char(tonumber(grabballNum))
+    buffers.grabball = string.char(tonumber(grabballNum))
 end
 
-local folder = Instance.new("Folder")
-folder.Name = "BUFFERSTRINGS"
+-- ==================== FUNCIONES DE ENVÍO ====================
 
-for i, v in pairs(tbl) do
-    local val = Instance.new("StringValue")
-    val.Value = v
-    val.Name = i
-    val.Parent = folder
+-- Función base para enviar comandos
+local function sendCommand(command, data)
+    remote:FireServer(buffer.fromstring(buffers["base"]), {
+        command = command,
+        data = data or {}
+    })
 end
 
-folder.Parent = game.Lighting
+-- ===== BALL =====
+local function grabBall()
+    remote:FireServer(buffer.fromstring(buffers["grabball"]))
+end
+
+local function kickBall(power, curve, direction)
+    remote:FireServer(buffer.fromstring(buffers["base"]), {
+        command = "kick",
+        power = power or 100,
+        curve = curve or false,
+        direction = direction
+    })
+end
+
+-- ===== SKILLS =====
+local function createSkill(skillData)
+    -- skillData = {slot, name, cooldown, type, reuse}
+    sendCommand("createskill", skillData)
+end
+
+local function useSkill(slot)
+    sendCommand("useskill", {slot = slot})
+end
+
+local function setCooldown(slot, cooldown)
+    sendCommand("setcooldown", {slot = slot, cooldown = cooldown})
+end
+
+-- ===== AWAKENING =====
+local function createAwakening(awkData)
+    -- awkData = {
+    --     topText, bottomText, color1, color2,
+    --     description, duration, cooldown
+    -- }
+    sendCommand("createAwakening", awkData)
+end
+
+local function activateAwakening()
+    sendCommand("activateAwakening")
+end
+
+local function deactivateAwakening()
+    sendCommand("deactivateAwakening")
+end
+
+local function updateAwkColors(color1, color2)
+    sendCommand("updateAwkColors", {color1 = color1, color2 = color2})
+end
+
+local function updateAwkTexts(topText, bottomText, description)
+    sendCommand("updateAwkTexts", {
+        topText = topText,
+        bottomText = bottomText,
+        description = description
+    })
+end
+
+-- ===== MOVEMENT =====
+local function dash(direction, distance, speed)
+    sendCommand("dash", {
+        direction = direction,
+        distance = distance or 65,
+        speed = speed or 148
+    })
+end
+
+local function teleport(position)
+    sendCommand("teleport", {position = position})
+end
+
+local function bodyVelocity(direction, speed, duration)
+    sendCommand("bodyvelocity", {
+        direction = direction,
+        speed = speed,
+        duration = duration
+    })
+end
+
+-- ===== EFFECTS =====
+local function playEffect(effectName, position, duration)
+    sendCommand("playeffect", {
+        effect = effectName,
+        position = position,
+        duration = duration
+    })
+end
+
+local function playSound(soundId, volume, position)
+    sendCommand("playsound", {
+        soundId = soundId,
+        volume = volume or 1,
+        position = position
+    })
+end
+
+local function playAnimation(animId, speed, priority)
+    sendCommand("playanimation", {
+        animId = animId,
+        speed = speed or 1,
+        priority = priority or "Action4"
+    })
+end
+
+-- ===== PLAYER STATE =====
+local function setStun(duration, disableRotate)
+    sendCommand("setstun", {
+        duration = duration,
+        disableRotate = disableRotate or false
+    })
+end
+
+local function setHipHeight(height)
+    sendCommand("sethipheight", {height = height})
+end
+
+local function setWalkSpeed(speed)
+    sendCommand("setwalkspeed", {speed = speed})
+end
+
+local function setJumpPower(power)
+    sendCommand("setjumppower", {power = power})
+end
+
+-- ===== VISUAL =====
+local function createHighlight(color, fillTrans, outlineTrans, duration)
+    sendCommand("createhighlight", {
+        color = color,
+        fillTrans = fillTrans or 0.6,
+        outlineTrans = outlineTrans or 0.3,
+        duration = duration or 2
+    })
+end
+
+local function createShockwave(position, size, duration)
+    sendCommand("createshockwave", {
+        position = position,
+        size = size,
+        duration = duration
+    })
+end
+
+local function spawnMeshEmitter(meshName, position, duration)
+    sendCommand("spawnmeshemitter", {
+        mesh = meshName,
+        position = position,
+        duration = duration
+    })
+end
+
+-- ===== GAME STATE =====
+local function changeStyle(styleName)
+    sendCommand("changestyle", {style = styleName})
+end
+
+local function getBallPosition()
+    sendCommand("getballposition")
+end
+
+local function checkFlow()
+    sendCommand("checkflow")
+end
+
+-- ===== CUSTOM =====
+local function customCommand(cmdName, cmdData)
+    sendCommand(cmdName, cmdData)
+end
+
+-- ==================== CLIENTE: RECEPTOR DE RESPUESTAS ====================
+local function setupClientReceiver()
+    -- Si el servidor envía datos de vuelta al cliente
+    -- (depende del sistema de replicación del juego)
+    
+    -- Ejemplo: escuchar cambios en la UI
+    local hotbar = game.Players.LocalPlayer.PlayerGui.Hotbar
+    
+    -- Actualizar barra de awakening cuando lleguen datos
+    game.Players.LocalPlayer.Character:GetAttributeChangedSignal("AwkData"):Connect(function()
+        local awkData = game.Players.LocalPlayer.Character:GetAttribute("AwkData")
+        if awkData then
+            updateClientAwkBar(awkData)
+        end
+    end)
+end
+
+-- ==================== CLIENTE: ACTUALIZAR UI ====================
+function updateClientAwkBar(awkData)
+    local hotbar = game.Players.LocalPlayer.PlayerGui.Hotbar
+    
+    if awkData.topText then
+        hotbar.MagicHealth.TextLabel.Visible = true
+        hotbar.MagicHealth.TextLabel.Text = awkData.topText
+    end
+    
+    if awkData.bottomText then
+        hotbar.MagicHealth.Awakening.Text = awkData.bottomText
+    end
+    
+    if awkData.color1 and awkData.color2 then
+        hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, awkData.color1),
+            ColorSequenceKeypoint.new(1, awkData.color2)
+        })
+    end
+    
+    if awkData.description then
+        hotbar.MagicHealth.TextLabel.Text = awkData.description
+    end
+end
+
+-- ==================== EXPORTAR ====================
+local RemoteBuffer = {
+    -- Ball
+    grabBall = grabBall,
+    kickBall = kickBall,
+    
+    -- Skills
+    createSkill = createSkill,
+    useSkill = useSkill,
+    setCooldown = setCooldown,
+    
+    -- Awakening
+    createAwakening = createAwakening,
+    activateAwakening = activateAwakening,
+    deactivateAwakening = deactivateAwakening,
+    updateAwkColors = updateAwkColors,
+    updateAwkTexts = updateAwkTexts,
+    
+    -- Movement
+    dash = dash,
+    teleport = teleport,
+    bodyVelocity = bodyVelocity,
+    
+    -- Effects
+    playEffect = playEffect,
+    playSound = playSound,
+    playAnimation = playAnimation,
+    
+    -- Player State
+    setStun = setStun,
+    setHipHeight = setHipHeight,
+    setWalkSpeed = setWalkSpeed,
+    setJumpPower = setJumpPower,
+    
+    -- Visual
+    createHighlight = createHighlight,
+    createShockwave = createShockwave,
+    spawnMeshEmitter = spawnMeshEmitter,
+    
+    -- Game State
+    changeStyle = changeStyle,
+    getBallPosition = getBallPosition,
+    checkFlow = checkFlow,
+    
+    -- Custom
+    customCommand = customCommand,
+    
+    -- Init
+    setupClientReceiver = setupClientReceiver,
+}
+
+return RemoteBuffer
