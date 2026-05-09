@@ -1,290 +1,177 @@
--- ==================== REMOTE BUFFER SYSTEM v2 ====================
+-- ==================== REMOTE BUFFER SYSTEM v4 (DATOS REALES) ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
-local buffers = {}
+local Players = game.Players
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
 
--- Obtener números de comando del juego
-local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
-local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
-local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+-- ===== COMANDOS REALES DE BYTENET =====
+local BYTENET = {
+    use = 44,           -- bytenet_use (comando principal)
+    findBall = 43,      -- bytenet_findBall
+    changeStyle = 61,   -- bytenet_changeStyle
+    clientCFrame = 9,   -- bytenet_clientCFrame
+    replication = 21,   -- bytenet_replication
+    replication2 = 19,  -- bytenet_replication2
+    MoveDirection = 12, -- bytenet_MoveDirection
+    useEmote = 41,      -- bytenet_useEmote
+}
 
-if baseNum then
-    local base = string.char(tonumber(baseNum))
-    buffers.base = base .. string.char(1)
-    buffers.createskill = base .. string.char(99)
+-- ===== BUFFERS =====
+local buffers = {
+    use = string.char(BYTENET.use),
+    findBall = string.char(BYTENET.findBall),
+    changeStyle = string.char(BYTENET.changeStyle),
+    clientCFrame = string.char(BYTENET.clientCFrame),
+}
+
+-- ===== HOTBAR =====
+local hotbar = player.PlayerGui:WaitForChild("Hotbar")
+
+-- Crear skills 6-8 clonando skill5
+local function createSkillButtons(count)
+    for i = 6, count do
+        if not hotbar.Backpack.Hotbar:FindFirstChild("skill"..i) then
+            local template = hotbar.Backpack.Hotbar.skill5:Clone()
+            template.Name = "skill"..i
+            template.Base.Number.Text = tostring(i)
+            template.Visible = true
+            template.Parent = hotbar.Backpack.Hotbar
+        end
+    end
 end
 
-if grabballNum then
-    buffers.grabball = string.char(tonumber(grabballNum))
+-- Nombre de skill
+local function setSkillName(slot, name, reuse)
+    local skill = hotbar.Backpack.Hotbar:FindFirstChild("skill"..slot)
+    if skill then
+        skill.Base.ToolName.Text = name or ""
+        if reuse then
+            skill.Base.Reuse.Text = reuse
+            skill.Base.Reuse.Visible = true
+        end
+    end
 end
 
--- ==================== FUNCIONES DE ENVÍO ====================
+-- Cooldown visual
+local function showCooldown(slot, duration)
+    local skill = hotbar.Backpack.Hotbar:FindFirstChild("skill"..slot)
+    if skill and skill:FindFirstChild("Cooldown") then
+        local cd = skill.Cooldown
+        cd.Visible = true
+        cd.Size = UDim2.new(1, 0, -1, 0)
+        game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+            Size = UDim2.new(1, 0, 0, 0)
+        }):Play()
+        task.delay(duration, function() cd.Visible = false end)
+    end
+end
 
--- Función base para enviar comandos
-local function sendCommand(command, data)
-    remote:FireServer(buffer.fromstring(buffers["base"]), {
-        command = command,
+-- ===== AWAKENING BAR (ESTRUCTURA REAL) =====
+local function setAwakening(config)
+    -- MagicHealth > Health > Frame > UIGradient (barra principal)
+    -- MagicHealth > Awakening (nombre abajo)
+    -- MagicHealth > TextLabel (descripción)
+    
+    if config.topText then
+        hotbar.MagicHealth.TextLabel.Visible = true
+        hotbar.MagicHealth.TextLabel.Text = config.topText
+    end
+    
+    if config.bottomText then
+        hotbar.MagicHealth.Awakening.Text = config.bottomText
+    end
+    
+    if config.color1 and config.color2 then
+        -- Health > Frame > UIGradient
+        hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, config.color1),
+            ColorSequenceKeypoint.new(1, config.color2)
+        })
+    end
+    
+    if config.description then
+        hotbar.MagicHealth.saeText.Text = config.description or ""
+    end
+end
+
+-- ===== COMANDOS BUFFER =====
+local function sendUse(cmd, data)
+    remote:FireServer(buffer.fromstring(buffers["use"] .. string.char(1)), {
+        command = cmd,
         data = data or {}
     })
 end
 
--- ===== BALL =====
+-- Ball
 local function grabBall()
-    remote:FireServer(buffer.fromstring(buffers["grabball"]))
+    remote:FireServer(buffer.fromstring(buffers["findBall"]))
 end
 
 local function kickBall(power, curve, direction)
-    remote:FireServer(buffer.fromstring(buffers["base"]), {
-        command = "kick",
+    sendUse("kick", {
         power = power or 100,
         curve = curve or false,
         direction = direction
     })
 end
 
--- ===== SKILLS =====
-local function createSkill(skillData)
-    -- skillData = {slot, name, cooldown, type, reuse}
-    sendCommand("createskill", skillData)
+-- Skills
+local function createSkill(slot, name, cd, reuse)
+    createSkillButtons(slot)
+    setSkillName(slot, name, reuse)
 end
 
-local function useSkill(slot)
-    sendCommand("useskill", {slot = slot})
+local function useSkill(slot, cd)
+    sendUse("skill"..slot)
+    if cd then showCooldown(slot, cd) end
 end
 
-local function setCooldown(slot, cooldown)
-    sendCommand("setcooldown", {slot = slot, cooldown = cooldown})
-end
-
--- ===== AWAKENING =====
-local function createAwakening(awkData)
-    -- awkData = {
-    --     topText, bottomText, color1, color2,
-    --     description, duration, cooldown
-    -- }
-    sendCommand("createAwakening", awkData)
-end
-
-local function activateAwakening()
-    sendCommand("activateAwakening")
-end
-
-local function deactivateAwakening()
-    sendCommand("deactivateAwakening")
-end
-
-local function updateAwkColors(color1, color2)
-    sendCommand("updateAwkColors", {color1 = color1, color2 = color2})
-end
-
-local function updateAwkTexts(topText, bottomText, description)
-    sendCommand("updateAwkTexts", {
-        topText = topText,
-        bottomText = bottomText,
-        description = description
-    })
-end
-
--- ===== MOVEMENT =====
-local function dash(direction, distance, speed)
-    sendCommand("dash", {
+-- Movement
+local function dash(direction, distance)
+    sendUse("dash", {
         direction = direction,
-        distance = distance or 65,
-        speed = speed or 148
+        distance = distance or 50
     })
 end
 
-local function teleport(position)
-    sendCommand("teleport", {position = position})
-end
-
-local function bodyVelocity(direction, speed, duration)
-    sendCommand("bodyvelocity", {
-        direction = direction,
-        speed = speed,
-        duration = duration
-    })
-end
-
--- ===== EFFECTS =====
-local function playEffect(effectName, position, duration)
-    sendCommand("playeffect", {
-        effect = effectName,
-        position = position,
-        duration = duration
-    })
-end
-
-local function playSound(soundId, volume, position)
-    sendCommand("playsound", {
-        soundId = soundId,
-        volume = volume or 1,
-        position = position
-    })
-end
-
-local function playAnimation(animId, speed, priority)
-    sendCommand("playanimation", {
-        animId = animId,
-        speed = speed or 1,
-        priority = priority or "Action4"
-    })
-end
-
--- ===== PLAYER STATE =====
-local function setStun(duration, disableRotate)
-    sendCommand("setstun", {
-        duration = duration,
-        disableRotate = disableRotate or false
-    })
+-- State
+local function setStun(duration)
+    if char and char.state then
+        char.state.stun.Value = true
+        task.delay(duration, function()
+            if char and char.state then
+                char.state.stun.Value = false
+            end
+        end)
+    end
 end
 
 local function setHipHeight(height)
-    sendCommand("sethipheight", {height = height})
-end
-
-local function setWalkSpeed(speed)
-    sendCommand("setwalkspeed", {speed = speed})
-end
-
-local function setJumpPower(power)
-    sendCommand("setjumppower", {power = power})
-end
-
--- ===== VISUAL =====
-local function createHighlight(color, fillTrans, outlineTrans, duration)
-    sendCommand("createhighlight", {
-        color = color,
-        fillTrans = fillTrans or 0.6,
-        outlineTrans = outlineTrans or 0.3,
-        duration = duration or 2
-    })
-end
-
-local function createShockwave(position, size, duration)
-    sendCommand("createshockwave", {
-        position = position,
-        size = size,
-        duration = duration
-    })
-end
-
-local function spawnMeshEmitter(meshName, position, duration)
-    sendCommand("spawnmeshemitter", {
-        mesh = meshName,
-        position = position,
-        duration = duration
-    })
-end
-
--- ===== GAME STATE =====
-local function changeStyle(styleName)
-    sendCommand("changestyle", {style = styleName})
-end
-
-local function getBallPosition()
-    sendCommand("getballposition")
-end
-
-local function checkFlow()
-    sendCommand("checkflow")
-end
-
--- ===== CUSTOM =====
-local function customCommand(cmdName, cmdData)
-    sendCommand(cmdName, cmdData)
-end
-
--- ==================== CLIENTE: RECEPTOR DE RESPUESTAS ====================
-local function setupClientReceiver()
-    -- Si el servidor envía datos de vuelta al cliente
-    -- (depende del sistema de replicación del juego)
-    
-    -- Ejemplo: escuchar cambios en la UI
-    local hotbar = game.Players.LocalPlayer.PlayerGui.Hotbar
-    
-    -- Actualizar barra de awakening cuando lleguen datos
-    game.Players.LocalPlayer.Character:GetAttributeChangedSignal("AwkData"):Connect(function()
-        local awkData = game.Players.LocalPlayer.Character:GetAttribute("AwkData")
-        if awkData then
-            updateClientAwkBar(awkData)
-        end
-    end)
-end
-
--- ==================== CLIENTE: ACTUALIZAR UI ====================
-function updateClientAwkBar(awkData)
-    local hotbar = game.Players.LocalPlayer.PlayerGui.Hotbar
-    
-    if awkData.topText then
-        hotbar.MagicHealth.TextLabel.Visible = true
-        hotbar.MagicHealth.TextLabel.Text = awkData.topText
-    end
-    
-    if awkData.bottomText then
-        hotbar.MagicHealth.Awakening.Text = awkData.bottomText
-    end
-    
-    if awkData.color1 and awkData.color2 then
-        hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, awkData.color1),
-            ColorSequenceKeypoint.new(1, awkData.color2)
-        })
-    end
-    
-    if awkData.description then
-        hotbar.MagicHealth.TextLabel.Text = awkData.description
+    if char then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then hum.HipHeight = height end
     end
 end
 
--- ==================== EXPORTAR ====================
-local RemoteBuffer = {
-    -- Ball
+-- Style
+local function changeStyle(style)
+    remote:FireServer(buffer.fromstring(buffers["changeStyle"]), {style})
+end
+
+-- ===== EXPORTAR =====
+return {
+    createSkillButtons = createSkillButtons,
+    setSkillName = setSkillName,
+    showCooldown = showCooldown,
+    setAwakening = setAwakening,
     grabBall = grabBall,
     kickBall = kickBall,
-    
-    -- Skills
     createSkill = createSkill,
     useSkill = useSkill,
-    setCooldown = setCooldown,
-    
-    -- Awakening
-    createAwakening = createAwakening,
-    activateAwakening = activateAwakening,
-    deactivateAwakening = deactivateAwakening,
-    updateAwkColors = updateAwkColors,
-    updateAwkTexts = updateAwkTexts,
-    
-    -- Movement
     dash = dash,
-    teleport = teleport,
-    bodyVelocity = bodyVelocity,
-    
-    -- Effects
-    playEffect = playEffect,
-    playSound = playSound,
-    playAnimation = playAnimation,
-    
-    -- Player State
     setStun = setStun,
     setHipHeight = setHipHeight,
-    setWalkSpeed = setWalkSpeed,
-    setJumpPower = setJumpPower,
-    
-    -- Visual
-    createHighlight = createHighlight,
-    createShockwave = createShockwave,
-    spawnMeshEmitter = spawnMeshEmitter,
-    
-    -- Game State
     changeStyle = changeStyle,
-    getBallPosition = getBallPosition,
-    checkFlow = checkFlow,
-    
-    -- Custom
-    customCommand = customCommand,
-    
-    -- Init
-    setupClientReceiver = setupClientReceiver,
+    sendUse = sendUse,
+    buffers = buffers,
 }
-
-return RemoteBuffer
