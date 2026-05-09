@@ -1,4 +1,4 @@
--- ==================== REMOTE BUFFER STRING (FINAL) ====================
+-- ==================== REMOTE BUFFER STRING ====================
 local tbl = {}
 
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
@@ -9,15 +9,11 @@ local moveDirNum = info:match('"bytenet_MoveDirection"%s*:%s*(%d+)')
 
 if useNum then
     local base = string.char(tonumber(useNum))
-    
-    -- Skills que YA existen (1-5)
     tbl.skill1 = base .. string.char(1)
     tbl.skill2 = base .. string.char(2)
     tbl.skill3 = base .. string.char(3)
     tbl.skill4 = base .. string.char(4)
     tbl.skill5 = base .. string.char(5)
-    
-    -- Skills NUEVAS (6-9) creadas con CreateSkill
     tbl.skill6 = base .. string.char(6)
     tbl.skill7 = base .. string.char(7)
     tbl.skill8 = base .. string.char(8)
