@@ -1,10 +1,12 @@
 -- TZE YOU ARE A GENIUS
 
+-- ==================== REMOTE BUFFER SYSTEM v6 FINAL ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
+-- ===== BUFFERS =====
 local buffers = {}
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
 local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
@@ -13,9 +15,11 @@ local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
 if baseNum then buffers.base = string.char(tonumber(baseNum)) .. string.char(1) end
 if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
 
+-- ===== HOTBAR =====
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
 
+-- ===== GRAB BALL (ESTILO EXE - RENDERSTEPPED) =====
 local grabConnection = nil
 
 local function grabBall(config)
@@ -26,6 +30,7 @@ local function grabBall(config)
         grabConnection = nil
         if player.Character then
             player.Character.Humanoid.HipHeight = 0
+            player.Character.HumanoidRootPart.Anchored = false
         end
         return
     end
@@ -33,34 +38,62 @@ local function grabBall(config)
     local char = player.Character
     if not char then return end
     
+    if char:FindFirstChild("Ball") then return end
+    
+    local root = char:WaitForChild("HumanoidRootPart")
+    local humanoid = char:WaitForChild("Humanoid")
+    local targetPart = workspace.Terrain:FindFirstChild("Ball")
+    if not targetPart then return end
+    
+    local savedRotation = root.CFrame - root.Position
+    local heightDiff = targetPart.Position.Y - root.Position.Y
+    
+    if conf.minHeight and heightDiff < conf.minHeight then return end
+    
     if conf.suspension then
-        char.Humanoid.HipHeight = 15
+        humanoid.HipHeight = 15
         task.delay(conf.suspensionTime or 0.5, function()
             if char then char.Humanoid.HipHeight = 0 end
         end)
     end
     
-    local function doGrab()
-        local c = player.Character
-        if not c or c:FindFirstChild("Ball") then
-            if grabConnection then
-                grabConnection:Disconnect()
-                grabConnection = nil
-            end
+    local startTime = tick()
+    local timeout = conf.timeout or 1
+    
+    grabConnection = RunService.RenderStepped:Connect(function()
+        if not root or not targetPart then
+            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
             return
         end
-        for _ = 1, (conf.maxAttempts or 5) do
-            remote:FireServer(buffer.fromstring(buffers["grabball"]))
+        
+        if tick() - startTime >= timeout then
+            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
+            return
         end
-    end
-    
-    doGrab()
-    
-    if conf.loop then
-        grabConnection = RunService.Heartbeat:Connect(doGrab)
-    end
+        
+        if char:FindFirstChild("Ball") then
+            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
+            return
+        end
+        
+        if (targetPart.Position - root.Position).Magnitude > 10 then
+            local pos = targetPart.Position
+            local correctedPos = Vector3.new(pos.X, pos.Y - 4, pos.Z)
+            local newCF = CFrame.new(correctedPos) * savedRotation
+            root.CFrame = newCF
+            RunService.RenderStepped:Wait()
+            root.CFrame = newCF
+            
+            task.spawn(function()
+                for _ = 1, (conf.maxAttempts or 5) do
+                    remote:FireServer(buffer.fromstring(buffers["grabball"]))
+                end
+            end)
+        end
+    end)
 end
 
+-- ===== STUN =====
 local function setStun(duration, disableRotate)
     local char = player.Character
     if not char then return end
@@ -78,31 +111,56 @@ local function setStun(duration, disableRotate)
     end)
 end
 
+-- ===== PASS BALL (ESTILO MESSI - BUSCA COMPAÑERO MÁS CERCANO) =====
 local function passBall(config)
     local conf = config or {}
-    local power = conf.power or 50
-    local targetPlayer = conf.target
-    
     local char = player.Character
     if not char or not char:FindFirstChild("Ball") then return end
-    local root = char.HumanoidRootPart
-    local direction
     
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        direction = (targetPlayer.Character.HumanoidRootPart.Position - root.Position).Unit
+    local root = char.HumanoidRootPart
+    local humanoid = char.Humanoid
+    
+    -- Buscar compañero más cercano
+    local closestTeammate = nil
+    local shortestDistance = conf.maxDistance or 180
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == player then continue end
+        if not p.Character then continue end
+        if p.Team ~= player.Team then continue end
+        if p.Team == game.Teams.lobby then continue end
+        
+        local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then continue end
+        
+        local dist = (root.Position - targetRoot.Position).Magnitude
+        if dist < shortestDistance then
+            shortestDistance = dist
+            closestTeammate = p
+        end
+    end
+    
+    local direction
+    local power = conf.power or 50
+    
+    if closestTeammate and closestTeammate.Character then
+        local targetRoot = closestTeammate.Character.HumanoidRootPart
+        local dist = (root.Position - targetRoot.Position).Magnitude
+        direction = (targetRoot.Position - root.Position).Unit
+        power = math.clamp(dist / 1.4, 18, 95)
     else
         direction = conf.direction or root.CFrame.LookVector
     end
     
     remote:FireServer(buffer.fromstring(buffers["base"]), {
-        {"kick", power, conf.curve or true, direction}
+        {"kick", power, true, direction}
     })
 end
 
+-- ===== KICK =====
 local function kickBall(config)
     local conf = config or {}
     local power = conf.power or 100
-    local curve = conf.curve or false
     local direction = conf.direction
     
     if not direction then
@@ -115,10 +173,11 @@ local function kickBall(config)
     end
     
     remote:FireServer(buffer.fromstring(buffers["base"]), {
-        {"kick", power, curve, direction}
+        {"kick", power, conf.curve or false, direction}
     })
 end
 
+-- ===== SKILLS =====
 local function setSkillName(slot, name, reuse)
     local skill = buttons:FindFirstChild("skill"..slot)
     if skill then
@@ -146,6 +205,7 @@ local function showCooldown(slot, duration)
     end
 end
 
+-- ===== TSPECIAL =====
 local function setupTSpecial(name, reuse, callback)
     local tBtn = buttons:FindFirstChild("Tspecialer") or buttons:FindFirstChild("TspecialerX")
     if not tBtn then
@@ -167,6 +227,7 @@ local function setupTSpecial(name, reuse, callback)
     end
 end
 
+-- ===== AWAKENING =====
 local function setAwakening(config)
     if config.bottomText then
         hotbar.MagicHealth.Awakening.Text = config.bottomText
@@ -179,10 +240,12 @@ local function setAwakening(config)
     end
 end
 
+-- ===== STYLE =====
 local function changeStyle(style)
     player:SetAttribute("style", style)
 end
 
+-- ===== EXPORTAR =====
 return {
     grabBall = grabBall,
     setStun = setStun,
