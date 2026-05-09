@@ -1,0 +1,197 @@
+-- TZE YOU ARE A GENIUS
+
+local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
+local Players = game.Players
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local buffers = {}
+local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
+local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
+local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+
+if baseNum then buffers.base = string.char(tonumber(baseNum)) .. string.char(1) end
+if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
+
+local hotbar = player.PlayerGui:WaitForChild("Hotbar")
+local buttons = hotbar.Backpack.Hotbar
+
+local grabConnection = nil
+
+local function grabBall(config)
+    local conf = config or {}
+    
+    if grabConnection then
+        grabConnection:Disconnect()
+        grabConnection = nil
+        if player.Character then
+            player.Character.Humanoid.HipHeight = 0
+        end
+        return
+    end
+    
+    local char = player.Character
+    if not char then return end
+    
+    if conf.suspension then
+        char.Humanoid.HipHeight = 15
+        task.delay(conf.suspensionTime or 0.5, function()
+            if char then char.Humanoid.HipHeight = 0 end
+        end)
+    end
+    
+    local function doGrab()
+        local c = player.Character
+        if not c or c:FindFirstChild("Ball") then
+            if grabConnection then
+                grabConnection:Disconnect()
+                grabConnection = nil
+            end
+            return
+        end
+        for _ = 1, (conf.maxAttempts or 5) do
+            remote:FireServer(buffer.fromstring(buffers["grabball"]))
+        end
+    end
+    
+    doGrab()
+    
+    if conf.loop then
+        grabConnection = RunService.Heartbeat:Connect(doGrab)
+    end
+end
+
+local function setStun(duration, disableRotate)
+    local char = player.Character
+    if not char then return end
+    char.state.stun.Value = true
+    if disableRotate then
+        char:SetAttribute("disableRotate", true)
+    end
+    task.delay(duration or 0.5, function()
+        if char then
+            char.state.stun.Value = false
+            if disableRotate then
+                char:SetAttribute("disableRotate", false)
+            end
+        end
+    end)
+end
+
+local function passBall(config)
+    local conf = config or {}
+    local power = conf.power or 50
+    local targetPlayer = conf.target
+    
+    local char = player.Character
+    if not char or not char:FindFirstChild("Ball") then return end
+    local root = char.HumanoidRootPart
+    local direction
+    
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        direction = (targetPlayer.Character.HumanoidRootPart.Position - root.Position).Unit
+    else
+        direction = conf.direction or root.CFrame.LookVector
+    end
+    
+    remote:FireServer(buffer.fromstring(buffers["base"]), {
+        {"kick", power, conf.curve or true, direction}
+    })
+end
+
+local function kickBall(config)
+    local conf = config or {}
+    local power = conf.power or 100
+    local curve = conf.curve or false
+    local direction = conf.direction
+    
+    if not direction then
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            direction = char.HumanoidRootPart.CFrame.LookVector * power
+        else
+            direction = Vector3.new(0, 0, -power)
+        end
+    end
+    
+    remote:FireServer(buffer.fromstring(buffers["base"]), {
+        {"kick", power, curve, direction}
+    })
+end
+
+local function setSkillName(slot, name, reuse)
+    local skill = buttons:FindFirstChild("skill"..slot)
+    if skill then
+        skill.Base.ToolName.Text = name or ""
+        if reuse then
+            skill.Base.Reuse.Text = reuse
+            skill.Base.Reuse.Visible = true
+        end
+    end
+end
+
+local function showCooldown(slot, duration)
+    local skill = buttons:FindFirstChild("skill"..slot)
+    if not skill then
+        skill = hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX_" .. slot)
+    end
+    if skill and skill:FindFirstChild("Cooldown") then
+        local cd = skill.Cooldown
+        cd.Visible = true
+        cd.Size = UDim2.new(1, 0, -1, 0)
+        game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+            Size = UDim2.new(1, 0, 0, 0)
+        }):Play()
+        task.delay(duration, function() cd.Visible = false end)
+    end
+end
+
+local function setupTSpecial(name, reuse, callback)
+    local tBtn = buttons:FindFirstChild("Tspecialer") or buttons:FindFirstChild("TspecialerX")
+    if not tBtn then
+        local template = buttons.skill1
+        if not template then return end
+        tBtn = template:Clone()
+        tBtn.Name = "Tspecialer"
+        tBtn.Base.Number.Text = ""
+        tBtn.Size = UDim2.new(0, 60, 0, 60)
+        tBtn.Position = UDim2.new(0, 10, 0, 80)
+        tBtn.Parent = buttons
+    end
+    tBtn.Base.ToolName.Text = name or "Special"
+    tBtn.Base.Reuse.Text = reuse or "Special"
+    tBtn.Base.Reuse.Visible = true
+    if callback then
+        local event = tBtn:FindFirstChild("MouseButton1Click") or tBtn.Base:FindFirstChild("MouseButton1Down")
+        if event then event:Connect(callback) end
+    end
+end
+
+local function setAwakening(config)
+    if config.bottomText then
+        hotbar.MagicHealth.Awakening.Text = config.bottomText
+    end
+    if config.color1 and config.color2 then
+        hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, config.color1),
+            ColorSequenceKeypoint.new(1, config.color2)
+        })
+    end
+end
+
+local function changeStyle(style)
+    player:SetAttribute("style", style)
+end
+
+return {
+    grabBall = grabBall,
+    setStun = setStun,
+    passBall = passBall,
+    kickBall = kickBall,
+    setSkillName = setSkillName,
+    showCooldown = showCooldown,
+    setupTSpecial = setupTSpecial,
+    setAwakening = setAwakening,
+    changeStyle = changeStyle,
+    buffers = buffers,
+}
