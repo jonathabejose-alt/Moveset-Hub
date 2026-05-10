@@ -73,6 +73,9 @@ if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
 
+-- Plantilla guardada UNA sola vez
+local skillTemplate = buttons:FindFirstChild("skill1") and buttons.skill1:Clone()
+
 local grabConnection = nil
 local function grabBall(config)
     local conf = config or {}
@@ -190,14 +193,15 @@ end
 
 local function createSkill(slot, name, reuse)
     if registeredSkills[slot] then registeredSkills[slot]:Destroy(); registeredSkills[slot] = nil end
-    local template = buttons:FindFirstChildWhichIsA("GuiObject")
-    if not template then return nil end
-    local skill = template:Clone()
+    if not skillTemplate then return nil end
+    local skill = skillTemplate:Clone()
     skill.Name = "skill"..slot
     skill.Base.Number.Text = tostring(slot)
     skill.Base.ToolName.Text = name or ""
     skill.Base.Reuse.Text = reuse or "Special"
     skill.Base.Reuse.Visible = true
+    local oldCd = skill:FindFirstChild("Cooldown")
+    if oldCd then oldCd:Destroy() end
     skill.Parent = buttons
     registeredSkills[slot] = skill
     refreshSkillPositions()
@@ -208,23 +212,20 @@ local cooldowns = {}
 local function showCooldown(slot, duration)
     if cooldowns[slot] then return end
     cooldowns[slot] = true
-    local skill = buttons:FindFirstChild("skill"..slot)
+    local skill = registeredSkills[slot] or buttons:FindFirstChild("skill"..slot)
     if not skill then
-        for _, child in pairs(hotbar.Backpack.Hotbar:GetChildren()) do
-            if child.Name:find("Tspecial") or child.Name == "skill"..slot then skill = child; break end
-        end
+        skill = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer") or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
     end
-    if skill then
-        if not skill:FindFirstChild("Cooldown") then
-            local cd = Instance.new("Frame")
-            cd.Name = "Cooldown"; cd.Size = UDim2.new(1, 0, 1, 0)
-            cd.BackgroundColor3 = Color3.fromRGB(0, 0, 0); cd.BackgroundTransparency = 0.5
-            cd.Visible = false; cd.ZIndex = 10; cd.Parent = skill
-        end
-        local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0); cd.ZIndex = 10
-        game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
-        task.delay(duration, function() cd.Visible = false; cooldowns[slot] = false end)
+    if not skill then cooldowns[slot] = false; return end
+    if not skill:FindFirstChild("Cooldown") then
+        local cd = Instance.new("Frame")
+        cd.Name = "Cooldown"; cd.Size = UDim2.new(1, 0, 1, 0)
+        cd.BackgroundColor3 = Color3.fromRGB(0, 0, 0); cd.BackgroundTransparency = 0.5
+        cd.Visible = false; cd.ZIndex = 10; cd.Parent = skill
     end
+    local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, 1, 0); cd.ZIndex = 10
+    game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+    task.delay(duration, function() cd.Visible = false; cooldowns[slot] = false end)
 end
 
 local function isOnCooldown(slot)
