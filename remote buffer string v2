@@ -57,6 +57,7 @@
    Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
 ]]
 
+-- ==================== REMOTE BUFFER SYSTEM v2 FINAL ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
@@ -167,6 +168,19 @@ local function setSkillName(slot, name, reuse)
     end
 end
 
+local function createSkill(slot, name, reuse)
+    local existing = buttons:FindFirstChild("skill"..slot)
+    if existing then existing:Destroy() end
+    local skill = buttons.skill1:Clone()
+    skill.Name = "skill"..slot
+    skill.Base.Number.Text = tostring(slot)
+    skill.Base.ToolName.Text = name
+    skill.Base.Reuse.Text = reuse or "Special"
+    skill.Base.Reuse.Visible = true
+    skill.Parent = buttons
+    return skill
+end
+
 local cooldowns = {}
 local function showCooldown(slot, duration)
     if cooldowns[slot] then return end
@@ -200,11 +214,11 @@ local function setupTSpecial(config)
     local callback = conf.callback
     local size = conf.size or 50
     local position = conf.position or "bottom"
-    local tBtn = buttons:FindFirstChild("Tspecialer") or buttons:FindFirstChild("TspecialerX")
+    local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer") or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
     if not tBtn then
         local template = buttons.skill1
         if not template then return end
-        tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Parent = buttons
+        tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Parent = hotbar.Backpack.Hotbar
     end
     tBtn.Size = UDim2.new(0, size, 0, size)
     if position == "left" then tBtn.Position = UDim2.new(0, 5, 0.5, -size/2)
@@ -232,7 +246,8 @@ end
 return {
     grabBall = grabBall, stopGrab = stopGrab, setStun = setStun,
     passBall = passBall, kickBall = kickBall,
-    setSkillName = setSkillName, showCooldown = showCooldown, isOnCooldown = isOnCooldown,
+    setSkillName = setSkillName, createSkill = createSkill,
+    showCooldown = showCooldown, isOnCooldown = isOnCooldown,
     setupTSpecial = setupTSpecial, setAwakening = setAwakening,
     changeStyle = changeStyle, buffers = buffers,
 }
