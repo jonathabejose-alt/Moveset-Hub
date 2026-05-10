@@ -57,7 +57,7 @@
    Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
 ]]
 
--- ==================== REMOTE BUFFER SYSTEM v2 FINALl ====================
+-- ==================== REMOTE BUFFER SYSTEM v2 FINAL ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
@@ -161,23 +161,46 @@ local function kickBall(config)
     remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, false, direction}})
 end
 
+local registeredSkills = {}
+local function refreshSkillPositions()
+    local sorted = {}
+    for slot, skill in pairs(registeredSkills) do
+        if skill and skill.Parent then table.insert(sorted, {slot = slot, skill = skill}) end
+    end
+    table.sort(sorted, function(a, b) return a.slot < b.slot end)
+    local skillSize = 50; local gap = 4
+    local totalW = (#sorted * skillSize) + ((#sorted - 1) * gap)
+    local startX = -(totalW / 2)
+    for i, entry in ipairs(sorted) do
+        local xOffset = startX + (i - 1) * (skillSize + gap)
+        entry.skill.Position = UDim2.new(0.5, xOffset, 0, 0)
+        entry.skill.Size = UDim2.new(0, skillSize, 0, skillSize)
+    end
+end
+
 local function setSkillName(slot, name, reuse)
     local skill = buttons:FindFirstChild("skill"..slot)
-    if skill then skill.Base.ToolName.Text = name or ""
+    if skill then
+        skill.Base.ToolName.Text = name or ""
         if reuse then skill.Base.Reuse.Text = reuse; skill.Base.Reuse.Visible = true end
+        registeredSkills[slot] = skill
+        refreshSkillPositions()
     end
 end
 
 local function createSkill(slot, name, reuse)
-    local existing = buttons:FindFirstChild("skill"..slot)
-    if existing then existing:Destroy() end
-    local skill = buttons.skill1:Clone()
+    if registeredSkills[slot] then registeredSkills[slot]:Destroy(); registeredSkills[slot] = nil end
+    local template = buttons:FindFirstChildWhichIsA("GuiObject")
+    if not template then return nil end
+    local skill = template:Clone()
     skill.Name = "skill"..slot
     skill.Base.Number.Text = tostring(slot)
-    skill.Base.ToolName.Text = name
+    skill.Base.ToolName.Text = name or ""
     skill.Base.Reuse.Text = reuse or "Special"
     skill.Base.Reuse.Visible = true
     skill.Parent = buttons
+    registeredSkills[slot] = skill
+    refreshSkillPositions()
     return skill
 end
 
@@ -212,7 +235,7 @@ local function setupTSpecial(config)
     local conf = config or {}
     local name = conf.name or "Special"
     local callback = conf.callback
-    local size = conf.size or 50
+    local size = 50
     local position = conf.position or "bottom"
     local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer") or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
     if not tBtn then
@@ -221,11 +244,11 @@ local function setupTSpecial(config)
         tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Parent = hotbar.Backpack.Hotbar
     end
     tBtn.Size = UDim2.new(0, size, 0, size)
-    if position == "left" then tBtn.Position = UDim2.new(0, 5, 0.5, -size/2)
-    elseif position == "right" then tBtn.Position = UDim2.new(1, -size-5, 0.5, -size/2)
-    elseif position == "top" then tBtn.Position = UDim2.new(0.5, -size/2, 0, 5)
-    elseif position == "bottom" then tBtn.Position = UDim2.new(0.5, -size/2, 1, -size-5)
-    else tBtn.Position = position end
+    if position == "left" then tBtn.Position = UDim2.new(0, -(50 + 8), 0.5, -25)
+    elseif position == "right" then tBtn.Position = UDim2.new(1, 8, 0.5, -25)
+    elseif position == "top" then tBtn.Position = UDim2.new(0.5, -25, 0, -(50 + 8))
+    elseif position == "bottom" then tBtn.Position = UDim2.new(0.5, -25, 1, 8)
+    elseif typeof(position) == "UDim2" then tBtn.Position = position end
     tBtn.Base.ToolName.Text = name; tBtn.Base.Reuse.Text = "Special"; tBtn.Base.Reuse.Visible = true
     if callback then tBtn.Base.MouseButton1Down:Connect(callback) end
 end
