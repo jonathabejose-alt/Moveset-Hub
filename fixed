@@ -187,29 +187,53 @@ local function kickBall(config)
 end
 
 -- ── Skills layout ────────────────────────────────────────────────────────
+-- registeredSkills solo guarda los creados con createSkill (slots extra > 5)
+-- Los slots nativos 1-5 NO se tocan nunca en posición ni tamaño
 local registeredSkills = {}
 
 local function refreshSkillPositions()
+    -- Recoge solo los skills EXTRA (creados por createSkill)
     local sorted = {}
     for slot, skill in pairs(registeredSkills) do
         if skill and skill.Parent then
             table.insert(sorted, {slot = slot, skill = skill})
         end
     end
+    if #sorted == 0 then return end
     table.sort(sorted, function(a, b) return a.slot < b.slot end)
+
+    -- Referencia: posición del último skill nativo existente
+    -- Los skills nativos ya están posicionados por el juego; los extras
+    -- se colocan a continuación hacia la derecha con el mismo gap
+    local lastNative = nil
+    for i = 5, 1, -1 do
+        local s = buttons:FindFirstChild("skill" .. i)
+        if s then lastNative = s; break end
+    end
 
     local skillSize = 50
     local gap       = 4
-    local totalW    = (#sorted * skillSize) + math.max(0, (#sorted - 1) * gap)
-    local startX    = -(totalW / 2)
+    -- Punto de partida: justo a la derecha del último nativo
+    -- Si no hay nativos, empieza centrado en 0
+    local baseX = 0
+    if lastNative then
+        baseX = lastNative.Position.X.Offset + skillSize + gap
+    end
 
     for i, entry in ipairs(sorted) do
-        local xOffset = startX + (i - 1) * (skillSize + gap)
-        entry.skill.Position = UDim2.new(0.5, xOffset, 0, 0)
-        entry.skill.Size     = UDim2.new(0, skillSize, 0, skillSize)
+        local xOffset = baseX + (i - 1) * (skillSize + gap)
+        -- Solo cambia posición, NUNCA el tamaño (el juego ya lo tiene correcto)
+        entry.skill.Position = UDim2.new(
+            lastNative and lastNative.Position.X.Scale or 0.5,
+            xOffset,
+            lastNative and lastNative.Position.Y.Scale or 0,
+            lastNative and lastNative.Position.Y.Offset or 0
+        )
+        entry.skill.Size = UDim2.new(0, skillSize, 0, skillSize)
     end
 end
 
+-- setSkillName: solo cambia texto, NUNCA registra ni toca posiciones
 local function setSkillName(slot, name, reuse)
     local skill = buttons:FindFirstChild("skill" .. slot)
     if skill then
@@ -218,19 +242,16 @@ local function setSkillName(slot, name, reuse)
             skill.Base.Reuse.Text    = reuse
             skill.Base.Reuse.Visible = true
         end
-        registeredSkills[slot] = skill
-        refreshSkillPositions()
     end
 end
 
 local function createSkill(slot, name, reuse)
-    -- Destruye el slot anterior si existe
+    -- Destruye el slot anterior creado por nosotros si existe
     if registeredSkills[slot] then
         registeredSkills[slot]:Destroy()
         registeredSkills[slot] = nil
     end
 
-    -- FIX: usa la plantilla guardada, nunca FindFirstChildWhichIsA
     if not skillTemplate then return nil end
     local skill = skillTemplate:Clone()
     skill.Name = "skill" .. slot
@@ -306,45 +327,58 @@ local function isOnCooldown(slot)
 end
 
 -- ── setupTSpecial ─────────────────────────────────────────────────────────
-local tSpecialConnection = nil  -- FIX: guarda conexión para no acumular
+local tSpecialConnection = nil
 
 local function setupTSpecial(config)
     local conf     = config or {}
     local name     = conf.name or "Special"
     local callback = conf.callback
-    local size     = 50  -- siempre 50
+    local size     = 50
     local position = conf.position or "bottom"
 
-    local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
+    -- FIX: padre = hotbar.Backpack (frame grande, sin ClipsDescendants)
+    -- hotbar.Backpack.Hotbar es el frame chico que cortaba el botón al salir
+    local parentFrame = hotbar.Backpack
+
+    local tBtn = parentFrame:FindFirstChild("Tspecialer")
+             or parentFrame:FindFirstChild("TspecialerX")
+             -- también busca en el antiguo padre por si ya existía
+             or hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
              or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
 
     if not tBtn then
         if not skillTemplate then return end
         tBtn = skillTemplate:Clone()
-        tBtn.Name   = "Tspecialer"
-        tBtn.Parent = hotbar.Backpack.Hotbar
+        tBtn.Name = "Tspecialer"
     end
 
-    tBtn.Size = UDim2.new(0, size, 0, size)
+    -- Reparenta siempre al frame correcto
+    tBtn.Parent = parentFrame
+    tBtn.Size   = UDim2.new(0, size, 0, size)
 
-    -- FIX: posiciones correctas con size=50 fijo
+    -- Las posiciones son relativas a hotbar.Backpack:
+    --   "left"   → izquierda de la pantalla, centrado vertical
+    --   "right"  → derecha
+    --   "top"    → arriba, centrado horizontal
+    --   "bottom" → abajo, centrado horizontal  (default)
+    --   UDim2    → posición manual exacta
     if position == "left" then
-        tBtn.Position = UDim2.new(0, -(50 + 8), 0.5, -25)
+        tBtn.Position = UDim2.new(0, 10, 0.5, -25)
     elseif position == "right" then
-        tBtn.Position = UDim2.new(1, 8, 0.5, -25)
+        tBtn.Position = UDim2.new(1, -(size + 10), 0.5, -25)
     elseif position == "top" then
-        tBtn.Position = UDim2.new(0.5, -25, 0, -(50 + 8))
+        tBtn.Position = UDim2.new(0.5, -25, 0, 10)
     elseif position == "bottom" then
-        tBtn.Position = UDim2.new(0.5, -25, 1, 8)
+        tBtn.Position = UDim2.new(0.5, -25, 1, -(size + 10))
     elseif typeof(position) == "UDim2" then
         tBtn.Position = position
     end
 
-    tBtn.Base.ToolName.Text  = name
-    tBtn.Base.Reuse.Text     = "Special"
-    tBtn.Base.Reuse.Visible  = true
+    tBtn.Base.ToolName.Text = name
+    tBtn.Base.Reuse.Text    = "Special"
+    tBtn.Base.Reuse.Visible = true
 
-    -- FIX: desconecta conexión anterior antes de conectar nueva
+    -- Desconecta callback anterior para no acumular
     if tSpecialConnection then
         tSpecialConnection:Disconnect()
         tSpecialConnection = nil
