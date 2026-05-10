@@ -1,0 +1,393 @@
+--[[
+       ____  ________  _______  ____________   ____  __  ________________________     _______________  _____   ________   _    __   ___ 
+      / __ \/ ____/  |/  / __ \/_  __/ ____/  / __ )/ / / / ____/ ____/ ____/ __ \   / ___/_  __/ __ \/  _/ | / / ____/  | |  / /  |__ \
+     / /_/ / __/ / /|_/ / / / / / / / __/    / __  / / / / /_  / /_  / __/ / /_/ /   \__ \ / / / /_/ // //  |/ / / __    | | / /   __/ /
+    / _, _/ /___/ /  / / /_/ / / / / /___   / /_/ / /_/ / __/ / __/ / /___/ _, _/   ___/ // / / _, _// // /|  / /_/ /    | |/ /   / __/ 
+   /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|   /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
+
+   A lightweight buffer string system for creating custom movesets.
+   Designed to be used with any character in Azure Latch.
+
+   Authors: jonathabejose-alt & Daffy_734
+   Github: https://github.com/jonathabejose-alt/Moveset-Hub
+]]
+
+-- ==================== REMOTE BUFFER SYSTEM v2 FIXED ====================
+local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
+local Players = game.Players
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- ── Buffers ──────────────────────────────────────────────────────────────
+local buffers = {}
+local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
+local baseNum    = info:match('"bytenet_use"%s*:%s*(%d+)')
+local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+if baseNum    then buffers.base    = string.char(tonumber(baseNum)) .. string.char(1) end
+if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
+
+-- ── UI refs ───────────────────────────────────────────────────────────────
+local hotbar  = player.PlayerGui:WaitForChild("Hotbar")
+local buttons = hotbar.Backpack.Hotbar
+
+-- Plantilla guardada UNA sola vez antes de cualquier modificación
+local skillTemplate = buttons:FindFirstChild("skill1") and buttons.skill1:Clone()
+if skillTemplate then skillTemplate.Parent = nil end  -- fuera del árbol, solo para clonar
+
+-- ── grabBall ──────────────────────────────────────────────────────────────
+local grabConnection = nil
+
+local function grabBall(config)
+    local conf = config or {}
+
+    -- Si ya está corriendo, lo detiene (toggle)
+    if grabConnection then
+        grabConnection:Disconnect()
+        grabConnection = nil
+        return
+    end
+
+    local char = player.Character
+    if not char or char:FindFirstChild("Ball") then return end
+
+    local root = char:WaitForChild("HumanoidRootPart")
+    if not workspace.Terrain:FindFirstChild("Ball") then return end
+
+    -- FIX: rotación pura sin posición
+    local savedRotation = root.CFrame - root.CFrame.Position
+
+    local function doGrab()
+        local c = player.Character
+        if not c or c:FindFirstChild("Ball") then
+            if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
+            return
+        end
+        local r    = c:FindFirstChild("HumanoidRootPart")
+        local ball = workspace.Terrain:FindFirstChild("Ball")
+        if not r or not ball then return end
+
+        local pos          = ball.Position
+        local correctedPos = Vector3.new(pos.X, pos.Y - 3, pos.Z)
+        r.CFrame = CFrame.new(correctedPos) * savedRotation
+
+        for _ = 1, (conf.maxAttempts or 3) do
+            remote:FireServer(buffer.fromstring(buffers["grabball"]))
+        end
+    end
+
+    doGrab()
+    if conf.loop then
+        grabConnection = RunService.Heartbeat:Connect(doGrab)
+    end
+end
+
+local function stopGrab()
+    if grabConnection then grabConnection:Disconnect(); grabConnection = nil end
+end
+
+-- ── setStun ───────────────────────────────────────────────────────────────
+-- FIX: corre en task.spawn para no bloquear el hilo del moveset
+local function setStun(duration, disableRotate)
+    task.spawn(function()
+        local char = player.Character
+        if not char then return end
+
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local hum  = char:FindFirstChildOfClass("Humanoid")
+
+        if disableRotate then char:SetAttribute("disableRotate", true) end
+        if hum  then hum.WalkSpeed = 0; hum.JumpPower = 0; hum.PlatformStand = true end
+        if root then root.Anchored = true end
+
+        local startTime = tick()
+        while tick() - startTime < (duration or 0.5) do
+            if not char or not char.Parent then break end
+            if char:FindFirstChild("state") then
+                char.state.stun.Value = true
+            end
+            task.wait(0.03)
+        end
+
+        if char and char.Parent then
+            if char:FindFirstChild("state") then char.state.stun.Value = false end
+            if disableRotate then char:SetAttribute("disableRotate", false) end
+            if hum  then hum.WalkSpeed = 40; hum.JumpPower = 50; hum.PlatformStand = false end
+            if root then root.Anchored = false end
+        end
+    end)
+end
+
+-- ── passBall ──────────────────────────────────────────────────────────────
+local function passBall(config)
+    local conf = config or {}
+    local char = player.Character
+    if not char or not char:FindFirstChild("Ball") then return end
+
+    local root = char.HumanoidRootPart
+    local closestTeammate, shortestDistance = nil, conf.maxDistance or 180
+
+    -- FIX: FindFirstChild para evitar error si el equipo no existe
+    local lobbyTeam = game.Teams:FindFirstChild("lobby")
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == player then continue end
+        if not p.Character then continue end
+        if p.Team ~= player.Team then continue end
+        if lobbyTeam and p.Team == lobbyTeam then continue end
+
+        local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then continue end
+
+        local dist = (root.Position - targetRoot.Position).Magnitude
+        if dist < shortestDistance then
+            shortestDistance = dist
+            closestTeammate  = p
+        end
+    end
+
+    local direction, power = nil, conf.power or 50
+
+    if closestTeammate and closestTeammate.Character then
+        local targetRoot = closestTeammate.Character.HumanoidRootPart
+        direction = (targetRoot.Position - root.Position).Unit
+        power     = math.clamp((targetRoot.Position - root.Position).Magnitude / 1.4, 18, 95)
+    else
+        direction = conf.direction or root.CFrame.LookVector
+    end
+
+    remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, true, direction}})
+end
+
+-- ── kickBall ──────────────────────────────────────────────────────────────
+local function kickBall(config)
+    local conf      = config or {}
+    local power     = conf.power or 100
+    local direction = conf.direction
+    local curve     = conf.curve
+
+    if not direction then
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            -- FIX: dirección normalizada, power va separado
+            direction = char.HumanoidRootPart.CFrame.LookVector
+        else
+            direction = Vector3.new(0, 0, -1)
+        end
+    end
+
+    -- Curva aplicada sobre la dirección (siempre normalizada)
+    if curve == "Left" then
+        direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(25), 0)).LookVector
+    elseif curve == "Right" then
+        direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(-25), 0)).LookVector
+    end
+
+    remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, false, direction}})
+end
+
+-- ── Skills layout ────────────────────────────────────────────────────────
+local registeredSkills = {}
+
+local function refreshSkillPositions()
+    local sorted = {}
+    for slot, skill in pairs(registeredSkills) do
+        if skill and skill.Parent then
+            table.insert(sorted, {slot = slot, skill = skill})
+        end
+    end
+    table.sort(sorted, function(a, b) return a.slot < b.slot end)
+
+    local skillSize = 50
+    local gap       = 4
+    local totalW    = (#sorted * skillSize) + math.max(0, (#sorted - 1) * gap)
+    local startX    = -(totalW / 2)
+
+    for i, entry in ipairs(sorted) do
+        local xOffset = startX + (i - 1) * (skillSize + gap)
+        entry.skill.Position = UDim2.new(0.5, xOffset, 0, 0)
+        entry.skill.Size     = UDim2.new(0, skillSize, 0, skillSize)
+    end
+end
+
+local function setSkillName(slot, name, reuse)
+    local skill = buttons:FindFirstChild("skill" .. slot)
+    if skill then
+        skill.Base.ToolName.Text = name or ""
+        if reuse then
+            skill.Base.Reuse.Text    = reuse
+            skill.Base.Reuse.Visible = true
+        end
+        registeredSkills[slot] = skill
+        refreshSkillPositions()
+    end
+end
+
+local function createSkill(slot, name, reuse)
+    -- Destruye el slot anterior si existe
+    if registeredSkills[slot] then
+        registeredSkills[slot]:Destroy()
+        registeredSkills[slot] = nil
+    end
+
+    -- FIX: usa la plantilla guardada, nunca FindFirstChildWhichIsA
+    if not skillTemplate then return nil end
+    local skill = skillTemplate:Clone()
+    skill.Name = "skill" .. slot
+
+    skill.Base.Number.Text   = tostring(slot)
+    skill.Base.ToolName.Text = name or ""
+    skill.Base.Reuse.Text    = reuse or "Special"
+    skill.Base.Reuse.Visible = true
+
+    -- Limpia cooldown heredado del clon
+    local oldCd = skill:FindFirstChild("Cooldown")
+    if oldCd then oldCd:Destroy() end
+
+    skill.Parent = buttons
+    registeredSkills[slot] = skill
+    refreshSkillPositions()
+    return skill
+end
+
+-- ── showCooldown ──────────────────────────────────────────────────────────
+local cooldowns = {}
+
+local function showCooldown(slot, duration)
+    if cooldowns[slot] then return end
+    cooldowns[slot] = true
+
+    -- FIX: busca primero en registeredSkills, luego por nombre, luego Tspecialer
+    local skill = registeredSkills[slot]
+        or buttons:FindFirstChild("skill" .. tostring(slot))
+
+    if not skill then
+        -- Para TSpecial: showCooldown("T", dur)
+        skill = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
+             or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
+    end
+
+    if not skill then
+        cooldowns[slot] = false
+        return
+    end
+
+    -- Crea el frame de cooldown si no existe
+    if not skill:FindFirstChild("Cooldown") then
+        local cd = Instance.new("Frame")
+        cd.Name                   = "Cooldown"
+        cd.Size                   = UDim2.new(1, 0, 1, 0)
+        cd.BackgroundColor3       = Color3.fromRGB(0, 0, 0)
+        cd.BackgroundTransparency = 0.5
+        cd.Visible                = false
+        cd.ZIndex                 = 10
+        cd.Parent                 = skill
+    end
+
+    local cd = skill.Cooldown
+    cd.Visible = true
+    -- FIX: empieza lleno (1,0) y baja a (0,0) — antes era -1 que daba altura negativa
+    cd.Size    = UDim2.new(1, 0, 1, 0)
+    cd.ZIndex  = 10
+
+    TweenService:Create(cd,
+        TweenInfo.new(duration, Enum.EasingStyle.Linear),
+        {Size = UDim2.new(1, 0, 0, 0)}
+    ):Play()
+
+    task.delay(duration, function()
+        cd.Visible      = false
+        cooldowns[slot] = false
+    end)
+end
+
+local function isOnCooldown(slot)
+    return cooldowns[slot] == true
+end
+
+-- ── setupTSpecial ─────────────────────────────────────────────────────────
+local tSpecialConnection = nil  -- FIX: guarda conexión para no acumular
+
+local function setupTSpecial(config)
+    local conf     = config or {}
+    local name     = conf.name or "Special"
+    local callback = conf.callback
+    local size     = 50  -- siempre 50
+    local position = conf.position or "bottom"
+
+    local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
+             or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
+
+    if not tBtn then
+        if not skillTemplate then return end
+        tBtn = skillTemplate:Clone()
+        tBtn.Name   = "Tspecialer"
+        tBtn.Parent = hotbar.Backpack.Hotbar
+    end
+
+    tBtn.Size = UDim2.new(0, size, 0, size)
+
+    -- FIX: posiciones correctas con size=50 fijo
+    if position == "left" then
+        tBtn.Position = UDim2.new(0, -(50 + 8), 0.5, -25)
+    elseif position == "right" then
+        tBtn.Position = UDim2.new(1, 8, 0.5, -25)
+    elseif position == "top" then
+        tBtn.Position = UDim2.new(0.5, -25, 0, -(50 + 8))
+    elseif position == "bottom" then
+        tBtn.Position = UDim2.new(0.5, -25, 1, 8)
+    elseif typeof(position) == "UDim2" then
+        tBtn.Position = position
+    end
+
+    tBtn.Base.ToolName.Text  = name
+    tBtn.Base.Reuse.Text     = "Special"
+    tBtn.Base.Reuse.Visible  = true
+
+    -- FIX: desconecta conexión anterior antes de conectar nueva
+    if tSpecialConnection then
+        tSpecialConnection:Disconnect()
+        tSpecialConnection = nil
+    end
+    if callback then
+        tSpecialConnection = tBtn.Base.MouseButton1Down:Connect(callback)
+    end
+
+    return tBtn
+end
+
+-- ── setAwakening ──────────────────────────────────────────────────────────
+local function setAwakening(config)
+    if not config then return end
+    if config.bottomText then
+        hotbar.MagicHealth.Awakening.Text = config.bottomText
+    end
+    if config.color1 and config.color2 then
+        hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, config.color1),
+            ColorSequenceKeypoint.new(1, config.color2),
+        })
+    end
+end
+
+-- ── changeStyle ───────────────────────────────────────────────────────────
+local function changeStyle(style)
+    player:SetAttribute("style", style)
+end
+
+-- ── Return ────────────────────────────────────────────────────────────────
+return {
+    grabBall      = grabBall,
+    stopGrab      = stopGrab,
+    setStun       = setStun,
+    passBall      = passBall,
+    kickBall      = kickBall,
+    setSkillName  = setSkillName,
+    createSkill   = createSkill,
+    showCooldown  = showCooldown,
+    isOnCooldown  = isOnCooldown,
+    setupTSpecial = setupTSpecial,
+    setAwakening  = setAwakening,
+    changeStyle   = changeStyle,
+    buffers       = buffers,
+}
