@@ -57,7 +57,7 @@
    Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
 ]]
 
--- ==================== REMOTE BUFFER SYSTEM v2 FINAL ====================
+-- ==================== REMOTE BUFFER SYSTEM v2 FINALl ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
@@ -196,9 +196,9 @@ local function showCooldown(slot, duration)
             local cd = Instance.new("Frame")
             cd.Name = "Cooldown"; cd.Size = UDim2.new(1, 0, 1, 0)
             cd.BackgroundColor3 = Color3.fromRGB(0, 0, 0); cd.BackgroundTransparency = 0.5
-            cd.Visible = false; cd.Parent = skill
+            cd.Visible = false; cd.ZIndex = 10; cd.Parent = skill
         end
-        local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0)
+        local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, -1, 0); cd.ZIndex = 10
         game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
         task.delay(duration, function() cd.Visible = false; cooldowns[slot] = false end)
     end
