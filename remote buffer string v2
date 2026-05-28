@@ -3,7 +3,7 @@
       / __ \/ ____/  |/  / __ \/_  __/ ____/  / __ )/ / / / ____/ ____/ ____/ __ \   / ___/_  __/ __ \/  _/ | / / ____/  | |  / /  |__ \
      / /_/ / __/ / /|_/ / / / / / / / __/    / __  / / / / /_  / /_  / __/ / /_/ /   \__ \ / / / /_/ // //  |/ / / __    | | / /   __/ /
     / _, _/ /___/ /  / / /_/ / / / / /___   / /_/ / /_/ / __/ / __/ / /___/ _, _/   ___/ // / / _, _// // /|  / /_/ /    | |/ /   / __/ 
-   /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|   /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
+   /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|  /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
                                                                                                                                      
    
    A lightweight buffer string system for creating custom movesets.
@@ -72,7 +72,6 @@ if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
 
--- Plantilla guardada UNA sola vez
 local skillTemplate = buttons:FindFirstChild("skill1") and buttons.skill1:Clone()
 
 local grabConnection = nil
