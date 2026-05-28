@@ -57,7 +57,6 @@
    Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
 ]]
 
--- ==================== REMOTE BUFFER SYSTEM v2 FINAL ====================
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
