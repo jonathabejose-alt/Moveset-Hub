@@ -91,10 +91,10 @@ TextChatService.OnIncomingMessage = function(msg)
 		local general = getGeneralChannel()
 		if general then
 			local msgs = {
-				"y-yes! i-im using c-celeron scripts!",
-				"Y-YES! im using c-celeron gui..!",
+				"y-yes! i-im using A-abyss scripts!",
+				"Y-YES! im using A-abyss gui..!",
 				"i love c-celeron!~!",
-				"i-im sowy for using celerons script.. 🥺"
+				"i-im sowy for using Abyss script.. 🥺"
 			}
 			general:SendAsync(msgs[math.random(#msgs)])
 		end
