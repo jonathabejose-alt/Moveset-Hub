@@ -441,7 +441,7 @@ game.StarterGui:SetCore("SendNotification", {
  task.wait(0.5)
 
 game.StarterGui:SetCore("SendNotification", {
-    Title = "Verison script:",
+    Title = "Version script:",
     Text = "v1",
     Duration = 5,
     Button1 = "Ok",
