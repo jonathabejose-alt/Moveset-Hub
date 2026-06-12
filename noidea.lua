@@ -9,7 +9,6 @@ local UserInputService = game:GetService("UserInputService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
-local ContextActionService = game:GetService("ContextActionService")
 
 local messiVFX = require(rep.client.replication.otherReplication.messiVFX)
 local mainreplication = require(rep.client.replication.mainreplication)
@@ -34,9 +33,10 @@ local blockedSounds = {
     "rbxassetid://110043103592232",
     "rbxassetid://89551484323719",
     "rbxassetid://93479045121219",
-    "rbxassetid://81199411973051",
-    "rbxassetid://115699700590432",
-    "rbxassetid://134456641764445",
+	"rbxassetid://81199411973051",
+	"rbxassetid://81199411973051",
+	"rbxassetid://115699700590432",
+	"rbxassetid://134456641764445",
 }
 SoundService.DescendantAdded:Connect(function(sound)
     if sound:IsA("Sound") then
@@ -56,10 +56,6 @@ pcall(function()
     sv.Parent = plr:WaitForChild("storage"):WaitForChild("styles")
 end)
 
--- ========== GUARDAR REFERENCIA ORIGINAL ==========
-local originalFireServer = remote.FireServer
-
--- ========== FUNCIONES AUXILIARES ==========
 local function HasBall()
     return plr.Character and plr.Character:FindFirstChild("Ball")
 end
@@ -102,53 +98,66 @@ local function PlaySFX(sound, parent)
     pcall(function() soundUtil:play(sound, parent) end)
 end
 
--- ========== SKILLS DEL MOVESET ==========
+local function BlockBaseAnimations(humanoid, ourAnimId)
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do track:Stop(0) end
+    local animBlock = humanoid.AnimationPlayed:Connect(function(track)
+        if track.Animation.AnimationId ~= ourAnimId then track:Stop(0) end
+    end)
+    return animBlock
+end
+
 local function Dribble()
-    if stopped then return end
     local char = plr.Character
     if not char or Stunned() or not HasBall() or IsOnCD("skill1") then return end
     CancelMove()
     DoCD("skill1", 3)
     local humanoid = char.Humanoid
     local root = char.HumanoidRootPart
+    local animBlock = BlockBaseAnimations(humanoid, anims.Dribble.AnimationId)
     humanoid:LoadAnimation(anims.Dribble):Play()
     PlaySFX(sounds.Superstar, root)
     pcall(function() messiVFX.messiDribbleVFX(char, true) end)
+    task.delay(4.25, function() animBlock:Disconnect() end)
 end
 
 local function TrapShot()
-    if stopped then return end
     local char = plr.Character
     if not char or Stunned() or not HasBall() or IsOnCD("skill2") then return end
     CancelMove()
     DoCD("skill2", 20)
     local humanoid = char.Humanoid
     local root = char.HumanoidRootPart
+    local animBlock = BlockBaseAnimations(humanoid, anims.InterceptShot.AnimationId)
     PlaySFX(sounds.TrapShot, root)
     pcall(function() messiVFX.messiShootVFX(char) end)
+    
     humanoid:LoadAnimation(anims.InterceptShot):Play()
+    
     task.delay(0.1, function() pcall(function() messiVFX.messiInterceptShot(char) end) end)
+    
     task.delay(2.3, function() 
         remote:FireServer(buffer.fromstring(buffers["base"]), {{"skill3"}}) 
     end)
+    
+    task.delay(2.9, function() animBlock:Disconnect() end)
 end
 
 local function Riptide()
-    if stopped then return end
     local char = plr.Character
     if not char or Stunned() or not HasBall() or IsOnCD("skill3") then return end
     CancelMove()
     DoCD("skill3", 20)
     local humanoid = char.Humanoid
     local root = char.HumanoidRootPart
+    local animBlock = BlockBaseAnimations(humanoid, anims.Riptide.AnimationId)
     PlaySFX(sounds.Riptide, root)
     pcall(function() messiVFX.messiShootVFX(char) end)
     humanoid:LoadAnimation(anims.Riptide):Play()
     task.delay(0.8, function() remote:FireServer(buffer.fromstring(buffers["base"]), {{"skill3"}}) end)
+    task.delay(1.2, function() animBlock:Disconnect() end)
 end
 
 local function Intercept()
-    if stopped then return end
     local char = plr.Character
     if not char or IsOnCD("skill4") or Stunned() then return end
     if HasBall() then return end
@@ -193,6 +202,7 @@ local function Intercept()
         humanoid.AutoRotate = false
         
         for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do track:Stop(0) end
+        local animBlock = BlockBaseAnimations(humanoid, anims.Intercept.AnimationId)
         humanoid:LoadAnimation(anims.Intercept):Play()
         PlaySFX(sounds.TrapCutscene, root)
         pcall(function() messiVFX.messiInterceptCutscene(char) end)
@@ -202,6 +212,8 @@ local function Intercept()
         root.Anchored = false
         root.AssemblyLinearVelocity = Vector3.new(0, -100, 0)
         humanoid.AutoRotate = true
+        
+        task.delay(1.6, function() animBlock:Disconnect(); mainreplication.sceneEnabled(false) end)
     else
         char.state.stun.Value = true
         task.delay(0.5, function() char.state.stun.Value = false end)
@@ -209,7 +221,6 @@ local function Intercept()
 end
 
 local function NutmegSteal()
-    if stopped then return end
     local char = plr.Character
     if not char or Stunned() or IsOnCD("skill5") then return end
     if HasBall() then return end
@@ -220,12 +231,18 @@ local function NutmegSteal()
     local humanoid = char.Humanoid
     local root = char.HumanoidRootPart
     
+    for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do track:Stop(0) end
+    local animBlock = humanoid.AnimationPlayed:Connect(function(track)
+        if track.Animation.AnimationId == "rbxassetid://109744655458082" then track:Stop(0) end
+    end)
+    
     humanoid:LoadAnimation(anims.NutmegStart):Play()
     PlaySFX(sounds.NutmegUse, root)
     
     task.wait(0.5)
     remote:FireServer(buffer.fromstring(buffers["base"]), {{"tackle"}})
     task.wait(0.3)
+    animBlock:Disconnect()
     
     if HasBall() then
         for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do track:Stop(0) end
@@ -245,7 +262,6 @@ local function NutmegSteal()
 end
 
 local function MessiFlow()
-    if stopped then return end
     local char = plr.Character
     if not char or Stunned() then return end
     if not HasBall() then return end
@@ -253,13 +269,18 @@ local function MessiFlow()
     
     flowOnCD = true
     
-    task.wait(0.5)
+     task.wait(0.5)
      
+    local songDuration = 60
     pcall(function()
         if sounds.Themes and sounds.Themes:FindFirstChild("Normal") then
-            soundUtil:play(sounds.Themes.Normal, SoundService)
+            local song = sounds.Themes.Normal
+            songDuration = song.TimeLength > 0 and song.TimeLength or 60
+            soundUtil:play(song, SoundService)
         end
     end)
+    
+   
     
     pcall(function() messiVFX.messiFlow(char) end)
     
@@ -268,11 +289,10 @@ local function MessiFlow()
         char.Humanoid:LoadAnimation(anims.Flow):Play()
     end
     
-    task.delay(60, function() flowOnCD = false end)
+    task.delay(songDuration, function() flowOnCD = false end)
 end
 
 local function SuperPass()
-    if stopped then return end
     local char = plr.Character
     if not char or Stunned() or not HasBall() then return end
     
@@ -326,111 +346,55 @@ local function SuperPass()
     )
 end
 
--- ========== CONFIGURAR BOTONES (PC Y MOVIL) ==========
-local function SetupButtons()
+local function Setup(char)
+    if stopped then return end
+    repeat task.wait() until plr.Team ~= game.Teams.lobby
+    task.wait(0.1)
+    
+    plr:SetAttribute("style", "messi")
+    
     local hotbar = plr.PlayerGui:WaitForChild("Hotbar")
     local buttons = hotbar.Backpack.Hotbar
-    
-    -- Remover conexiones antiguas
-    for i = 1, 5 do
-        local btn = buttons["skill"..i]
-        if btn and btn._connection then
-            btn._connection:Disconnect()
-        end
-        if btn and btn.Base then
-            btn._connection = btn.Base.MouseButton1Down:Connect(function()
-                if i == 1 then Dribble()
-                elseif i == 2 then TrapShot()
-                elseif i == 3 then Riptide()
-                elseif i == 4 then Intercept()
-                elseif i == 5 then NutmegSteal()
-                end
-            end)
-        end
-        
-        -- Cambiar nombres
-        if btn and btn.Base and btn.Base.ToolName then
-            local names = {"Superstar", "Heads Up", "Riptide", "Heads Up", "Forced Nutmeg"}
-            btn.Base.ToolName.Text = names[i]
-            
-            local reuseTexts = {"Ball", "Shot", "Shot", "Off-ball", "Steal"}
-            btn.Base.Reuse.Text = reuseTexts[i]
-            btn.Base.Reuse.Visible = true
-        end
+
+    buttons.skill1.Base.MouseButton1Down:Connect(Dribble)
+    buttons.skill2.Base.MouseButton1Down:Connect(TrapShot)
+    buttons.skill3.Base.MouseButton1Down:Connect(Riptide)
+    buttons.skill4.Base.MouseButton1Down:Connect(Intercept)
+    buttons.skill5.Base.MouseButton1Down:Connect(NutmegSteal)
+
+    buttons.skill1.Base.ToolName.Text = "Superstar"
+    buttons.skill2.Base.ToolName.Text = "Heads Up"
+    buttons.skill3.Base.ToolName.Text = "Riptide"
+    buttons.skill4.Base.ToolName.Text = "Heads Up"
+    buttons.skill5.Base.ToolName.Text = "Forced Nutmeg"
+
+    buttons.skill1.Base.Reuse.Text = "Ball"
+    buttons.skill2.Base.Reuse.Text = "Shot"
+    buttons.skill3.Base.Reuse.Text = "Shot"
+    buttons.skill4.Base.Reuse.Text = "Off-ball"
+    buttons.skill5.Base.Reuse.Text = "Steal"
+
+    for i = 1, 5 do 
+        buttons["skill"..i].Base.Reuse.Visible = true
+        buttons["skill"..i].Visible = true
     end
-    
-    -- Boton T special (Super Pass)
-    local tBtn = buttons:FindFirstChild("Tspecialer")
-    if tBtn then
-        if tBtn._connection then tBtn._connection:Disconnect() end
-        if tBtn:FindFirstChild("Base") then
-            tBtn._connection = tBtn.MouseButton1Click:Connect(SuperPass)
-            if tBtn.Base.ToolName then tBtn.Base.ToolName.Text = "Super Pass" end
-            if tBtn.Base.Reuse then 
-                tBtn.Base.Reuse.Text = "Pass"
-                tBtn.Base.Reuse.Visible = true
-            end
-        end
-    end
-    
-    -- Configurar UI de Flow
-    local magicHealth = hotbar:FindFirstChild("MagicHealth")
-    if magicHealth then
-        if magicHealth:FindFirstChild("Awakening") then
-            magicHealth.Awakening.Text = "Argentina's Best"
-        end
-        if magicHealth:FindFirstChild("Health") and magicHealth.Health:FindFirstChild("Frame") then
-            local gradient = magicHealth.Health.Frame:FindFirstChild("UIGradient")
-            if gradient then
-                gradient.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 157, 255)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 157, 255))
-                }
-            end
-        end
-    end
+
+local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
+if tBtn and tBtn:FindFirstChild("Base") then
+    tBtn.Base.ToolName.Text = "Super Pass"
+    tBtn.Base.Reuse.Text = "Pass"
+    tBtn.Base.Reuse.Visible = true
+    tBtn.MouseButton1Click:Connect(SuperPass)
 end
 
--- ========== BLOQUEAR SOLO SKILLS ORIGINALES (SIN ROMPER EL MOVESET) ==========
-local function BlockOriginalSkills()
-    -- Esto es opcional: si quieres bloquear que el juego active sus propias skills
-    -- pero NO bloquea las que tu moveset envia
-    
-    -- Hookear el remote pero permitir nuestros propios paquetes
-    remote.FireServer = function(self, ...)
-        local args = {...}
-        
-        -- Verificar si es un paquete nuestro (contiene buffer.base)
-        local isOurPacket = false
-        for _, arg in ipairs(args) do
-            if type(arg) == "string" and arg:find("base") then
-                isOurPacket = true
-                break
-            end
-            if type(arg) == "table" and arg[1] and arg[1][1] then
-                -- Nuestros paquetes tienen estructura { {"skill1"} } o { {"kick", ...} }
-                local skill = arg[1][1]
-                if skill == "skill1" or skill == "skill2" or skill == "skill3" or 
-                   skill == "skill4" or skill == "skill5" or skill == "kick" or
-                   skill == "tackle" or skill == "dribble" then
-                    isOurPacket = true
-                    break
-                end
-            end
-        end
-        
-        -- Si es nuestro paquete, permitir
-        if isOurPacket then
-            return originalFireServer(self, ...)
-        end
-        
-        -- Si NO es nuestro paquete, bloquear (son las skills originales del juego)
-        return
-    end
-end
+    hotbar.MagicHealth.Awakening.Text = "Argentina's Best"
+	hotbar.MagicHealth.TextLabel.Visible = true
+	hotbar.MagicHealth.TextLabel.Text = "Die with the rest."
+    hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 157, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 157, 255))
+    }
 
--- ========== FLOW DETECTION ==========
-local function SetupFlow(char)
     char:GetAttributeChangedSignal("FlowActive"):Connect(function()
         if char:GetAttribute("FlowActive") == true and not stopped then
             char:SetAttribute("FlowActive", false)
@@ -439,36 +403,13 @@ local function SetupFlow(char)
     end)
 end
 
--- ========== INICIALIZACION ==========
-local function SetupCharacter(char)
-    if stopped then return end
-    repeat task.wait() until plr.Team ~= game.Teams.lobby
-    task.wait(0.1)
-    
-    plr:SetAttribute("style", "messi")
-    
-    SetupButtons()
-    SetupFlow(char)
-    BlockOriginalSkills() -- Activar bloqueo de skills originales
-end
-
--- Conectar eventos
-SetupCharacter(plr.Character)
+Setup(plr.Character)
 plr.CharacterAdded:Connect(function(char)
     flowOnCD = false
     task.wait(1)
-    SetupCharacter(char)
+    Setup(char)
 end)
 
--- Re-aplicar bloqueo cuando cambia la GUI
-plr.PlayerGui:WaitForChild("Hotbar").DescendantAdded:Connect(function(desc)
-    if desc.Name == "Hotbar" or desc.Name:match("skill%d") or desc.Name == "Tspecialer" then
-        task.wait(0.1)
-        SetupButtons()
-    end
-end)
-
--- ========== INPUTS TECLADO (PC) ==========
 UserInputService.InputBegan:Connect(function(input, bg)
     if bg or stopped then return end
     if input.KeyCode == Enum.KeyCode.One then Dribble()
@@ -478,20 +419,33 @@ UserInputService.InputBegan:Connect(function(input, bg)
     elseif input.KeyCode == Enum.KeyCode.Five then NutmegSteal()
     elseif input.KeyCode == Enum.KeyCode.T then SuperPass()
     elseif input.KeyCode == Enum.KeyCode.G then MessiFlow()
-    elseif input.KeyCode == Enum.KeyCode.F4 then 
-        stopped = true
-        -- Restaurar remote original al detener
-        remote.FireServer = originalFireServer
-        print("Moveset stopped")
-    end
+    elseif input.KeyCode == Enum.KeyCode.F4 then stopped = true; print("stopped") end
 end)
 
--- ========== NOTIFICACIONES ==========
 game.StarterGui:SetCore("SendNotification", {
     Title = "Moveset",
-    Text = "Messi Moveset loaded! (PC + Mobile)",
+    Text = "Messi Moveset loaded!",
     Duration = 5,
     Button1 = "Ok",
 })
 
-print("Messi Moveset loaded! PC + Mobile compatible")
+
+ task.wait(0.5)
+
+ 
+game.StarterGui:SetCore("SendNotification", {
+    Title = "Made By",
+    Text = "tze",
+    Duration = 5,
+    Button1 = "Ok",
+})
+
+ task.wait(0.5)
+
+game.StarterGui:SetCore("SendNotification", {
+    Title = "Version script:",
+    Text = "v1",
+    Duration = 5,
+    Button1 = "Ok",
+})
+print("Messi Moveset loaded!")
