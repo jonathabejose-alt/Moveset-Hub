@@ -6,72 +6,244 @@
    /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|  /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
                                                                                                                                      
    
-   A lightweight buffer string system for creating custom movesets.
-   Designed to be used with any character in Azure Latch.
+   REMOTE BUFFER V2 - by tze
    
-   FUNCTIONS:
+   ============================================================================
+   CORE FUNCTIONS
+   ============================================================================
    
-   grabBall(config)
-     - config.loop (bool): Keep grabbing until you have the ball
-     - config.maxAttempts (number): Attempts per grab
+   1. grabBall(config)
+      What it does: Automatically grabs the ball from anywhere on the field
+      Parameters:
+        - config.loop (true/false): Keep grabbing until you have the ball
+        - config.maxAttempts (number): How many grab attempts per loop (default: 3)
+      Example:
+        grabBall({loop = true, maxAttempts = 5})
+        grabBall() -- single grab
+        grabBall({loop = true}) -- infinite loop
    
-   setStun(duration, disableRotate)
-     - duration (number): Seconds to stun
-     - disableRotate (bool): Prevent character rotation
+   2. stopGrab()
+      What it does: Stops the ball grabbing loop
+      Example: stopGrab()
    
-   passBall(config)
-     - config.power (number): Shot power (auto-calculated if teammate found)
-     - config.maxDistance (number): Max search distance for teammate
-     - Automatically finds the closest teammate and passes to them
+   3. setStun(duration, disableRotate)
+      What it does: Freezes the character for a set time
+      Parameters:
+        - duration (number): How many seconds to stun
+        - disableRotate (true/false): Prevent character from turning
+      Example: setStun(0.5, true)
    
-   kickBall(config)
-     - config.power (number): Shot power (default: 100)
-     - config.direction (Vector3): Direction to kick
-     - config.curve (string): "Left" or "Right" for curved shots
+   4. passBall(config)
+      What it does: Kicks the ball to the closest teammate
+      Parameters:
+        - config.power (number): Kick strength (auto-calculated if teammate found)
+        - config.maxDistance (number): How far to look for teammates (default: 180)
+        - config.direction (Vector3): Manual direction if no teammate found
+      Example: passBall({power = 50})
    
-   setSkillName(slot, name, reuse)
-     - slot (number): Skill slot (1-5)
-     - name (string): Display name
-     - reuse (string): Reuse text (e.g. "Ball", "Shot", "Movement")
+   5. kickBall(config)
+      What it does: Kicks the ball in a direction
+      Parameters:
+        - config.power (number): Kick strength (default: 100)
+        - config.direction (Vector3): Which way to kick
+        - config.curve (string): "Left" or "Right" for curved shots
+      Example: kickBall({power = 100, curve = "Left"})
    
-   showCooldown(slot, duration)
-     - slot (number): Skill slot
-     - duration (number): Cooldown in seconds
+   ============================================================================
+   SKILL FUNCTIONS
+   ============================================================================
    
-   setupTSpecial(config)
-     - config.name (string): Button name
-     - config.position (string): "left", "right", "top", "bottom" or UDim2
-     - config.size (number): Button size in pixels
-     - config.callback (function): Function to call on click
+   6. useSkill(skillNumber, target)
+      What it does: Activates a skill slot
+      Parameters:
+        - skillNumber (1,2,3,4,5): Which skill button to press
+        - target (player): Who to target (for passing skills)
+      Example: useSkill(1) or useSkill(3, targetPlayer)
    
-   setAwakening(config)
-     - config.bottomText (string): Awakening name
-     - config.color1 (Color3): Bar color start
-     - config.color2 (Color3): Bar color end
+   7. useDribble()
+      What it does: Activates the dribble skill
+      Example: useDribble()
    
-   changeStyle(style)
-     - style (string): Style name (e.g. "exe", "messi", "izayoi")
+   8. useTackle()
+      What it does: Performs a tackle move
+      Example: useTackle()
    
-   Authors: jonathabejose-alt & Daffy_734
-   Github: https://github.com/jonathabejose-alt/Moveset-Hub
-   Original Remote Buffer: https://pastebin.com/raw/8XJh7dzh
+   9. setSkillName(slot, name, reuse)
+      What it does: Changes the name of a skill button
+      Parameters:
+        - slot (1-5): Which skill button
+        - name (string): New name to display
+        - reuse (string): Text like "Ball", "Shot", "Steal"
+      Example: setSkillName(1, "Superstar", "Ball")
+   
+   10. createSkill(slot, name, reuse)
+       What it does: Creates a new skill button if it doesn't exist
+       Parameters: Same as setSkillName
+       Example: createSkill(6, "Special", "Move")
+   
+   11. showCooldown(slot, duration)
+       What it does: Shows a cooldown animation on a skill button
+       Parameters:
+         - slot (1-5 or "tspecial"): Which button
+         - duration (number): How many seconds cooldown lasts
+       Example: showCooldown(1, 3)
+   
+   12. isOnCooldown(slot)
+       What it does: Checks if a skill is still on cooldown
+       Returns: true if cooling down, false if ready
+       Example: if not isOnCooldown(1) then useSkill(1) end
+   
+   ============================================================================
+   UI FUNCTIONS
+   ============================================================================
+   
+   13. setupTSpecial(config)
+       What it does: Creates or modifies the T special button
+       Parameters:
+         - config.name (string): Button text
+         - config.position ("left","right","top","bottom" or UDim2): Where to place it
+         - config.size (number): Button size in pixels (default: 50)
+         - config.callback (function): What happens when clicked
+       Example: setupTSpecial({name = "Super Pass", position = "right", callback = myFunction})
+   
+   14. setAwakening(config)
+       What it does: Changes the awakening/flow UI appearance
+       Parameters:
+         - config.bottomText (string): Main text at bottom
+         - config.subText (string): Secondary text above
+         - config.color1 (Color3): Left side gradient color
+         - config.color2 (Color3): Right side gradient color
+         - config.icon (string): Image asset ID for icon
+         - config.visible (true/false): Show or hide the UI
+       Example: setAwakening({bottomText = "God Mode", color1 = Color3.fromRGB(255,0,0), color2 = Color3.fromRGB(0,0,255)})
+   
+   15. changeStyle(style)
+       What it does: Changes your character's style attribute
+       Parameters: style name as string
+       Example: changeStyle("messi") or changeStyle("exe")
+   
+   ============================================================================
+   PC & MOBILE FUNCTIONS
+   ============================================================================
+   
+   16. blockOriginalSkills()
+       What it does: Prevents the game from activating its own skills
+       Why use it: Stops double activation (your skill + game skill both firing)
+       Works on: Both PC keyboard and Mobile touch
+       Example: blockOriginalSkills()
+   
+   17. restoreOriginalSkills()
+       What it does: Re-enables the game's original skills
+       When to use: When unloading your move set
+       Example: restoreOriginalSkills()
+   
+   18. setupMobileInputs(skillCallbacks)
+       What it does: Connects touch screen buttons to your functions
+       Parameters: Table with your functions
+       Format: {[1] = function, [2] = function, [3] = function, [4] = function, [5] = function, tspecial = function, flow = function}
+       Example: setupMobileInputs({[1] = function() useSkill(1) end, tspecial = function() passBall() end})
+   
+   19. setupPCInputs(skillCallbacks)
+       What it does: Connects keyboard keys (1-5, T, G) to your functions
+       Parameters: Same format as setupMobileInputs
+       Example: setupPCInputs({[1] = dribbleFunc, [2] = shootFunc, tspecial = passFunc})
+   
+   20. clearMobileInputs()
+       What it does: Removes all connected input bindings
+       When to use: When unloading your move set
+       Example: clearMobileInputs()
+   
+   ============================================================================
+   BUFFERS TABLE
+   ============================================================================
+   
+   buffers.base     - Main buffer for sending skills
+   buffers.grabball - Buffer for grabbing the ball
+   buffers.tackle   - Buffer for tackle moves
+   buffers.dribble  - Buffer for dribble moves
+   buffers.skill1-5 - Individual skill buffers
+   buffers.kick     - Buffer for kicking
+   
+   All buffers are auto-extracted from the game's BytenetStorage
+   You don't need to create them manually
+   
+   ============================================================================
+   COMPLETE EXAMPLE (MESSI MOVESET)
+   ============================================================================
+   
+   local rb = loadstring(game:HttpGet("your_raw_url"))()
+   
+   rb.blockOriginalSkills()
+   
+   rb.setSkillName(1, "Superstar", "Ball")
+   rb.setSkillName(2, "Heads Up", "Shot")
+   rb.setSkillName(3, "Riptide", "Shot")
+   rb.setSkillName(4, "Heads Up", "Off-ball")
+   rb.setSkillName(5, "Forced Nutmeg", "Steal")
+   
+   rb.setupTSpecial({name = "Super Pass", position = "right", callback = function() rb.passBall() end})
+   
+   rb.setAwakening({
+       bottomText = "Argentina's Best",
+       subText = "Messi Mode",
+       color1 = Color3.fromRGB(0, 157, 255),
+       color2 = Color3.fromRGB(0, 100, 200)
+   })
+   
+   local function onSkill1() rb.useSkill(1) end
+   local function onSkill2() rb.useSkill(2) end
+   local function onSkill3() rb.useSkill(3) end
+   local function onSkill4() rb.useSkill(4) end
+   local function onSkill5() rb.useSkill(5) end
+   
+   rb.setupMobileInputs({
+       [1] = onSkill1, [2] = onSkill2, [3] = onSkill3,
+       [4] = onSkill4, [5] = onSkill5,
+       tspecial = function() rb.passBall() end
+   })
+   
+   rb.setupPCInputs({
+       [1] = onSkill1, [2] = onSkill2, [3] = onSkill3,
+       [4] = onSkill4, [5] = onSkill5,
+       tspecial = function() rb.passBall() end,
+       flow = function() print("Flow key pressed") end
+   })
+   
 ]]
 
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 
 local buffers = {}
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
 local baseNum = info:match('"bytenet_use"%s*:%s*(%d+)')
 local grabballNum = info:match('"bytenet_findBall"%s*:%s*(%d+)')
+local tackleNum = info:match('"bytenet_tackle"%s*:%s*(%d+)')
+local dribbleNum = info:match('"bytenet_dribble"%s*:%s*(%d+)')
+local skill1Num = info:match('"bytenet_skill1"%s*:%s*(%d+)')
+local skill2Num = info:match('"bytenet_skill2"%s*:%s*(%d+)')
+local skill3Num = info:match('"bytenet_skill3"%s*:%s*(%d+)')
+local skill4Num = info:match('"bytenet_skill4"%s*:%s*(%d+)')
+local skill5Num = info:match('"bytenet_skill5"%s*:%s*(%d+)')
+local kickNum = info:match('"bytenet_kick"%s*:%s*(%d+)')
+
 if baseNum then buffers.base = string.char(tonumber(baseNum)) .. string.char(1) end
 if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
+if tackleNum then buffers.tackle = string.char(tonumber(tackleNum)) end
+if dribbleNum then buffers.dribble = string.char(tonumber(dribbleNum)) end
+if skill1Num then buffers.skill1 = string.char(tonumber(skill1Num)) end
+if skill2Num then buffers.skill2 = string.char(tonumber(skill2Num)) end
+if skill3Num then buffers.skill3 = string.char(tonumber(skill3Num)) end
+if skill4Num then buffers.skill4 = string.char(tonumber(skill4Num)) end
+if skill5Num then buffers.skill5 = string.char(tonumber(skill5Num)) end
+if kickNum then buffers.kick = string.char(tonumber(kickNum)) end
 
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
-
 local skillTemplate = buttons:FindFirstChild("skill1") and buttons.skill1:Clone()
 
 local grabConnection = nil
@@ -90,9 +262,10 @@ local function grabBall(config)
         local r = c:FindFirstChild("HumanoidRootPart")
         local ball = workspace.Terrain:FindFirstChild("Ball")
         if not r or not ball then return end
-        local pos = ball.Position; local correctedPos = Vector3.new(pos.X, pos.Y - 3, pos.Z)
+        local pos = ball.Position
+        local correctedPos = Vector3.new(pos.X, pos.Y - 3, pos.Z)
         r.CFrame = CFrame.new(correctedPos) * savedRotation
-        for _ = 1, (conf.maxAttempts or 3) do remote:FireServer(buffer.fromstring(buffers["grabball"])) end
+        for _ = 1, (conf.maxAttempts or 3) do remote:FireServer(buffers.grabball) end
     end
     doGrab()
     if conf.loop then grabConnection = RunService.Heartbeat:Connect(doGrab) end
@@ -119,7 +292,7 @@ local function setStun(duration, disableRotate)
     if char then
         if char.state then char.state.stun.Value = false end
         if disableRotate then char:SetAttribute("disableRotate", false) end
-        if hum then hum.WalkSpeed = 40; hum.JumpPower = 50; hum.PlatformStand = false end
+        if hum then hum.WalkSpeed = 16; hum.JumpPower = 50; hum.PlatformStand = false end
         if root then root.Anchored = false end
     end
 end
@@ -138,38 +311,68 @@ local function passBall(config)
         local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
         if not targetRoot then continue end
         local dist = (root.Position - targetRoot.Position).Magnitude
-        if dist < shortestDistance then shortestDistance = dist; closestTeammate = p end
+        if dist < shortestDistance then
+            shortestDistance = dist
+            closestTeammate = p
+        end
     end
     local direction, power = nil, conf.power or 50
     if closestTeammate and closestTeammate.Character then
         local targetRoot = closestTeammate.Character.HumanoidRootPart
         direction = (targetRoot.Position - root.Position).Unit
         power = math.clamp((targetRoot.Position - root.Position).Magnitude / 1.4, 18, 95)
-    else direction = conf.direction or root.CFrame.LookVector end
-    remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, true, direction}})
+    else
+        direction = conf.direction or root.CFrame.LookVector
+    end
+    remote:FireServer(buffers.base, {{"kick", power, true, direction}})
 end
 
 local function kickBall(config)
     local conf = config or {}
-    local power = conf.power or 100; local direction = conf.direction; local curve = conf.curve
+    local power = conf.power or 100
+    local direction = conf.direction
+    local curve = conf.curve
     if not direction then
         local char = player.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then direction = char.HumanoidRootPart.CFrame.LookVector * power
-        else direction = Vector3.new(0, 0, -power) end
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            direction = char.HumanoidRootPart.CFrame.LookVector * power
+        else
+            direction = Vector3.new(0, 0, -power)
+        end
     end
-    if curve == "Left" then direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(25), 0)).LookVector
-    elseif curve == "Right" then direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(-25), 0)).LookVector end
-    remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, false, direction}})
+    if curve == "Left" then
+        direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(25), 0)).LookVector
+    elseif curve == "Right" then
+        direction = (CFrame.new(Vector3.zero, direction) * CFrame.Angles(0, math.rad(-25), 0)).LookVector
+    end
+    remote:FireServer(buffers.base, {{"kick", power, false, direction}})
+end
+
+local function useSkill(skillNumber, target)
+    local args = {{"skill" .. skillNumber}}
+    if target then args[1][2] = target end
+    remote:FireServer(buffers.base, args)
+end
+
+local function useDribble()
+    remote:FireServer(buffers.base, {{"dribble", false}})
+end
+
+local function useTackle()
+    remote:FireServer(buffers.base, {{"tackle"}})
 end
 
 local registeredSkills = {}
 local function refreshSkillPositions()
     local sorted = {}
     for slot, skill in pairs(registeredSkills) do
-        if skill and skill.Parent then table.insert(sorted, {slot = slot, skill = skill}) end
+        if skill and skill.Parent then
+            table.insert(sorted, {slot = slot, skill = skill})
+        end
     end
     table.sort(sorted, function(a, b) return a.slot < b.slot end)
-    local skillSize = 50; local gap = 4
+    local skillSize = 50
+    local gap = 4
     local totalW = (#sorted * skillSize) + ((#sorted - 1) * gap)
     local startX = -(totalW / 2)
     for i, entry in ipairs(sorted) do
@@ -183,14 +386,20 @@ local function setSkillName(slot, name, reuse)
     local skill = buttons:FindFirstChild("skill"..slot)
     if skill then
         skill.Base.ToolName.Text = name or ""
-        if reuse then skill.Base.Reuse.Text = reuse; skill.Base.Reuse.Visible = true end
+        if reuse then
+            skill.Base.Reuse.Text = reuse
+            skill.Base.Reuse.Visible = true
+        end
         registeredSkills[slot] = skill
         refreshSkillPositions()
     end
 end
 
 local function createSkill(slot, name, reuse)
-    if registeredSkills[slot] then registeredSkills[slot]:Destroy(); registeredSkills[slot] = nil end
+    if registeredSkills[slot] then
+        registeredSkills[slot]:Destroy()
+        registeredSkills[slot] = nil
+    end
     if not skillTemplate then return nil end
     local skill = skillTemplate:Clone()
     skill.Name = "skill"..slot
@@ -214,16 +423,29 @@ local function showCooldown(slot, duration)
     if not skill then
         skill = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer") or hotbar.Backpack.Hotbar:FindFirstChild("TspecialerX")
     end
-    if not skill then cooldowns[slot] = false; return end
+    if not skill then
+        cooldowns[slot] = false
+        return
+    end
     if not skill:FindFirstChild("Cooldown") then
         local cd = Instance.new("Frame")
-        cd.Name = "Cooldown"; cd.Size = UDim2.new(1, 0, 1, 0)
-        cd.BackgroundColor3 = Color3.fromRGB(0, 0, 0); cd.BackgroundTransparency = 0.5
-        cd.Visible = false; cd.ZIndex = 10; cd.Parent = skill
+        cd.Name = "Cooldown"
+        cd.Size = UDim2.new(1, 0, 1, 0)
+        cd.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        cd.BackgroundTransparency = 0.5
+        cd.Visible = false
+        cd.ZIndex = 10
+        cd.Parent = skill
     end
-    local cd = skill.Cooldown; cd.Visible = true; cd.Size = UDim2.new(1, 0, 1, 0); cd.ZIndex = 10
+    local cd = skill.Cooldown
+    cd.Visible = true
+    cd.Size = UDim2.new(1, 0, 1, 0)
+    cd.ZIndex = 10
     game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
-    task.delay(duration, function() cd.Visible = false; cooldowns[slot] = false end)
+    task.delay(duration, function()
+        cd.Visible = false
+        cooldowns[slot] = false
+    end)
 end
 
 local function isOnCooldown(slot)
@@ -240,24 +462,50 @@ local function setupTSpecial(config)
     if not tBtn then
         local template = buttons.skill1
         if not template then return end
-        tBtn = template:Clone(); tBtn.Name = "Tspecialer"; tBtn.Parent = hotbar.Backpack.Hotbar
+        tBtn = template:Clone()
+        tBtn.Name = "Tspecialer"
+        tBtn.Parent = hotbar.Backpack.Hotbar
     end
     tBtn.Size = UDim2.new(0, size, 0, size)
-    if position == "left" then tBtn.Position = UDim2.new(0, -(50 + 8), 0.5, -25)
-    elseif position == "right" then tBtn.Position = UDim2.new(1, 8, 0.5, -25)
-    elseif position == "top" then tBtn.Position = UDim2.new(0.5, -25, 0, -(50 + 8))
-    elseif position == "bottom" then tBtn.Position = UDim2.new(0.5, -25, 1, 8)
-    elseif typeof(position) == "UDim2" then tBtn.Position = position end
-    tBtn.Base.ToolName.Text = name; tBtn.Base.Reuse.Text = "Special"; tBtn.Base.Reuse.Visible = true
-    if callback then tBtn.Base.MouseButton1Down:Connect(callback) end
+    if position == "left" then
+        tBtn.Position = UDim2.new(0, -(50 + 8), 0.5, -25)
+    elseif position == "right" then
+        tBtn.Position = UDim2.new(1, 8, 0.5, -25)
+    elseif position == "top" then
+        tBtn.Position = UDim2.new(0.5, -25, 0, -(50 + 8))
+    elseif position == "bottom" then
+        tBtn.Position = UDim2.new(0.5, -25, 1, 8)
+    elseif typeof(position) == "UDim2" then
+        tBtn.Position = position
+    end
+    tBtn.Base.ToolName.Text = name
+    tBtn.Base.Reuse.Text = "Special"
+    tBtn.Base.Reuse.Visible = true
+    if callback then
+        tBtn.Base.MouseButton1Down:Connect(callback)
+    end
 end
 
 local function setAwakening(config)
-    if config.bottomText then hotbar.MagicHealth.Awakening.Text = config.bottomText end
-    if config.color1 and config.color2 then
+    local conf = config or {}
+    if conf.bottomText then
+        hotbar.MagicHealth.Awakening.Text = conf.bottomText
+    end
+    if conf.subText then
+        hotbar.MagicHealth.TextLabel.Visible = true
+        hotbar.MagicHealth.TextLabel.Text = conf.subText
+    end
+    if conf.color1 and conf.color2 then
         hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, config.color1), ColorSequenceKeypoint.new(1, config.color2)
+            ColorSequenceKeypoint.new(0, conf.color1),
+            ColorSequenceKeypoint.new(1, conf.color2)
         })
+    end
+    if conf.icon then
+        hotbar.MagicHealth.Icon.Image = conf.icon
+    end
+    if conf.visible ~= nil then
+        hotbar.MagicHealth.Visible = conf.visible
     end
 end
 
@@ -265,11 +513,142 @@ local function changeStyle(style)
     player:SetAttribute("style", style)
 end
 
+local blockActive = false
+local blockedButtons = {}
+local function blockOriginalSkills()
+    if blockActive then return end
+    blockActive = true
+    local backpack = hotbar:FindFirstChild("Backpack")
+    if not backpack then return end
+    local hotbarFrame = backpack:FindFirstChild("Hotbar")
+    if not hotbarFrame then return end
+    for i = 1, 5 do
+        local btn = hotbarFrame:FindFirstChild("skill" .. i)
+        if btn then
+            if btn._original then
+                btn._original:Disconnect()
+                btn._original = nil
+            end
+            local overlay = Instance.new("TextButton")
+            overlay.Size = UDim2.new(1, 0, 1, 0)
+            overlay.BackgroundTransparency = 1
+            overlay.Text = ""
+            overlay.Active = true
+            overlay.Selectable = true
+            overlay.Parent = btn
+            overlay.MouseButton1Down:Connect(function() end)
+            blockedButtons[btn] = overlay
+        end
+    end
+    local tBtn = hotbarFrame:FindFirstChild("Tspecialer")
+    if tBtn then
+        if tBtn._original then
+            tBtn._original:Disconnect()
+            tBtn._original = nil
+        end
+        local overlay = Instance.new("TextButton")
+        overlay.Size = UDim2.new(1, 0, 1, 0)
+        overlay.BackgroundTransparency = 1
+        overlay.Text = ""
+        overlay.Active = true
+        overlay.Selectable = true
+        overlay.Parent = tBtn
+        blockedButtons[tBtn] = overlay
+    end
+    local originalFire = remote.FireServer
+    remote.FireServer = function(self, ...)
+        local args = {...}
+        local isMoveSetPacket = false
+        if args[1] == buffers.base and type(args[2]) == "table" then
+            local action = args[2][1] and args[2][1][1]
+            if action == "skill1" or action == "skill2" or action == "skill3" or 
+               action == "skill4" or action == "skill5" or action == "tackle" or 
+               action == "kick" or action == "dribble" then
+                isMoveSetPacket = true
+            end
+        end
+        if not isMoveSetPacket then
+            return
+        end
+        return originalFire(self, unpack(args))
+    end
+    remote._original = originalFire
+end
+
+local function restoreOriginalSkills()
+    blockActive = false
+    for btn, overlay in pairs(blockedButtons) do
+        if overlay and overlay.Parent then
+            overlay:Destroy()
+        end
+    end
+    blockedButtons = {}
+    if remote._original then
+        remote.FireServer = remote._original
+        remote._original = nil
+    end
+end
+
+local inputConnections = {}
+local function setupMobileInputs(skillCallbacks)
+    local backHotbar = hotbar:FindFirstChild("Backpack"):FindFirstChild("Hotbar")
+    if not backHotbar then return end
+    for i = 1, 5 do
+        local btn = backHotbar:FindFirstChild("skill" .. i)
+        if btn and skillCallbacks[i] then
+            local conn = btn.Base.MouseButton1Down:Connect(skillCallbacks[i])
+            table.insert(inputConnections, conn)
+        end
+    end
+    local tBtn = backHotbar:FindFirstChild("Tspecialer")
+    if tBtn and skillCallbacks.tspecial then
+        local conn = tBtn.Base.MouseButton1Down:Connect(skillCallbacks.tspecial)
+        table.insert(inputConnections, conn)
+    end
+end
+
+local function clearMobileInputs()
+    for _, conn in ipairs(inputConnections) do
+        conn:Disconnect()
+    end
+    inputConnections = {}
+end
+
+local function setupPCInputs(skillCallbacks)
+    local conn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if input.KeyCode == Enum.KeyCode.One and skillCallbacks[1] then skillCallbacks[1]()
+        elseif input.KeyCode == Enum.KeyCode.Two and skillCallbacks[2] then skillCallbacks[2]()
+        elseif input.KeyCode == Enum.KeyCode.Three and skillCallbacks[3] then skillCallbacks[3]()
+        elseif input.KeyCode == Enum.KeyCode.Four and skillCallbacks[4] then skillCallbacks[4]()
+        elseif input.KeyCode == Enum.KeyCode.Five and skillCallbacks[5] then skillCallbacks[5]()
+        elseif input.KeyCode == Enum.KeyCode.T and skillCallbacks.tspecial then skillCallbacks.tspecial()
+        elseif input.KeyCode == Enum.KeyCode.G and skillCallbacks.flow then skillCallbacks.flow()
+        end
+    end)
+    table.insert(inputConnections, conn)
+end
+
 return {
-    grabBall = grabBall, stopGrab = stopGrab, setStun = setStun,
-    passBall = passBall, kickBall = kickBall,
-    setSkillName = setSkillName, createSkill = createSkill,
-    showCooldown = showCooldown, isOnCooldown = isOnCooldown,
-    setupTSpecial = setupTSpecial, setAwakening = setAwakening,
-    changeStyle = changeStyle, buffers = buffers,
+    grabBall = grabBall,
+    stopGrab = stopGrab,
+    setStun = setStun,
+    passBall = passBall,
+    kickBall = kickBall,
+    useSkill = useSkill,
+    useDribble = useDribble,
+    useTackle = useTackle,
+    setSkillName = setSkillName,
+    createSkill = createSkill,
+    showCooldown = showCooldown,
+    isOnCooldown = isOnCooldown,
+    setupTSpecial = setupTSpecial,
+    setAwakening = setAwakening,
+    changeStyle = changeStyle,
+    blockOriginalSkills = blockOriginalSkills,
+    restoreOriginalSkills = restoreOriginalSkills,
+    setupMobileInputs = setupMobileInputs,
+    setupPCInputs = setupPCInputs,
+    clearMobileInputs = clearMobileInputs,
+    buffers = buffers,
 }
