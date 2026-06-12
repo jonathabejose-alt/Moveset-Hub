@@ -9,8 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
-local ContextActionService = game:GetService("ContextActionService") -- Para móvil
-local VirtualInputManager = game:GetService("VirtualInputManager") -- Para bloquear teclas
+local ContextActionService = game:GetService("ContextActionService")
 
 local messiVFX = require(rep.client.replication.otherReplication.messiVFX)
 local mainreplication = require(rep.client.replication.mainreplication)
@@ -57,83 +56,8 @@ pcall(function()
     sv.Parent = plr:WaitForChild("storage"):WaitForChild("styles")
 end)
 
--- ========== BLOQUEAR SKILLS ORIGINALES ==========
-local blockedRemotes = {
-    "skill1", "skill2", "skill3", "skill4", "skill5", "skill6",
-    "dribble", "tackle", "kick", "pass"
-}
-
--- Metodo 1: Bloquear el remote original
+-- ========== GUARDAR REFERENCIA ORIGINAL ==========
 local originalFireServer = remote.FireServer
-remote.FireServer = function(self, ...)
-    local args = {...}
-    local bufferData = args[1]
-    
-    -- Si es buffer, convertir a string para verificar
-    local str = type(bufferData) == "buffer" and buffer.tostring(bufferData) or tostring(bufferData)
-    
-    -- Bloquear skills originales
-    for _, blocked in pairs(blockedRemotes) do
-        if str:lower():find(blocked) then
-            return -- No enviar el remote
-        end
-    end
-    
-    -- Si no esta bloqueado, enviar normalmente
-    return originalFireServer(self, ...)
-end
-
--- Metodo 2: Bloquear teclas fisicas (PC)
-local blockedKeys = {
-    [Enum.KeyCode.One] = true,
-    [Enum.KeyCode.Two] = true,
-    [Enum.KeyCode.Three] = true,
-    [Enum.KeyCode.Four] = true,
-    [Enum.KeyCode.Five] = true,
-    [Enum.KeyCode.Q] = true,
-    [Enum.KeyCode.E] = true,
-    [Enum.KeyCode.R] = true,
-    [Enum.KeyCode.F] = true,
-    [Enum.KeyCode.G] = true,
-}
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if stopped then return end
-    if blockedKeys[input.KeyCode] then
-        -- Bloquear la tecla para que el juego no la detecte
-        gameProcessed = true
-        return
-    end
-end)
-
--- Metodo 3: Bloquear botones táctiles (Móvil)
-local function blockMobileButtons()
-    local hotbar = plr.PlayerGui:FindFirstChild("Hotbar")
-    if not hotbar then return end
-    
-    local buttons = hotbar.Backpack.Hotbar
-    for i = 1, 5 do
-        local btn = buttons:FindFirstChild("skill" .. i)
-        if btn and btn:FindFirstChild("Base") then
-            -- Desconectar conexiones existentes
-            if btn._connection then btn._connection:Disconnect() end
-            -- Bloquear el click original
-            btn._connection = btn.Base.MouseButton1Down:Connect(function()
-                -- No hacer nada, bloquear la skill original
-                return
-            end)
-        end
-    end
-    
-    -- Bloquear T special
-    local tBtn = buttons:FindFirstChild("Tspecialer")
-    if tBtn and tBtn:FindFirstChild("Base") then
-        if tBtn._connection then tBtn._connection:Disconnect() end
-        tBtn._connection = tBtn.Base.MouseButton1Down:Connect(function()
-            return
-        end)
-    end
-end
 
 -- ========== FUNCIONES AUXILIARES ==========
 local function HasBall()
@@ -467,17 +391,42 @@ local function SetupButtons()
     end
 end
 
--- ========== REGISTRAR TOUCH PARA MOVIL ==========
-local function SetupMobileTouch()
-    -- Registrar acciones táctiles con ContextActionService
-    ContextActionService:BindAction("Messi_Dribble", function(actionName, userInputState, inputObject)
-        if userInputState == Enum.UserInputState.Begin then
-            Dribble()
-        end
-        return Enum.ContextActionResult.Sink
-    end, false, Enum.KeyCode.ButtonR1, Enum.KeyCode.ButtonL1)
+-- ========== BLOQUEAR SOLO SKILLS ORIGINALES (SIN ROMPER EL MOVESET) ==========
+local function BlockOriginalSkills()
+    -- Esto es opcional: si quieres bloquear que el juego active sus propias skills
+    -- pero NO bloquea las que tu moveset envia
     
-    -- Nota: Los botones táctiles ya están manejados por los MouseButton1Down
+    -- Hookear el remote pero permitir nuestros propios paquetes
+    remote.FireServer = function(self, ...)
+        local args = {...}
+        
+        -- Verificar si es un paquete nuestro (contiene buffer.base)
+        local isOurPacket = false
+        for _, arg in ipairs(args) do
+            if type(arg) == "string" and arg:find("base") then
+                isOurPacket = true
+                break
+            end
+            if type(arg) == "table" and arg[1] and arg[1][1] then
+                -- Nuestros paquetes tienen estructura { {"skill1"} } o { {"kick", ...} }
+                local skill = arg[1][1]
+                if skill == "skill1" or skill == "skill2" or skill == "skill3" or 
+                   skill == "skill4" or skill == "skill5" or skill == "kick" or
+                   skill == "tackle" or skill == "dribble" then
+                    isOurPacket = true
+                    break
+                end
+            end
+        end
+        
+        -- Si es nuestro paquete, permitir
+        if isOurPacket then
+            return originalFireServer(self, ...)
+        end
+        
+        -- Si NO es nuestro paquete, bloquear (son las skills originales del juego)
+        return
+    end
 end
 
 -- ========== FLOW DETECTION ==========
@@ -499,8 +448,8 @@ local function SetupCharacter(char)
     plr:SetAttribute("style", "messi")
     
     SetupButtons()
-    SetupMobileTouch()
     SetupFlow(char)
+    BlockOriginalSkills() -- Activar bloqueo de skills originales
 end
 
 -- Conectar eventos
@@ -511,7 +460,7 @@ plr.CharacterAdded:Connect(function(char)
     SetupCharacter(char)
 end)
 
--- Bloquear botones móviles cuando cambia la GUI
+-- Re-aplicar bloqueo cuando cambia la GUI
 plr.PlayerGui:WaitForChild("Hotbar").DescendantAdded:Connect(function(desc)
     if desc.Name == "Hotbar" or desc.Name:match("skill%d") or desc.Name == "Tspecialer" then
         task.wait(0.1)
@@ -531,52 +480,16 @@ UserInputService.InputBegan:Connect(function(input, bg)
     elseif input.KeyCode == Enum.KeyCode.G then MessiFlow()
     elseif input.KeyCode == Enum.KeyCode.F4 then 
         stopped = true
-        print("Moveset stopped")
-        -- Restaurar remote original
+        -- Restaurar remote original al detener
         remote.FireServer = originalFireServer
-    end
-end)
-
--- ========== BLOQUEAR HABILIDADES ORIGINALES CADA CIERTO TIEMPO ==========
-task.spawn(function()
-    while not stopped do
-        task.wait(2)
-        -- Re-aplicar bloqueo de remotes
-        remote.FireServer = function(self, ...)
-            local args = {...}
-            local str = tostring(args[1])
-            for _, blocked in pairs(blockedRemotes) do
-                if str:lower():find(blocked) then
-                    return
-                end
-            end
-            return originalFireServer(self, ...)
-        end
+        print("Moveset stopped")
     end
 end)
 
 -- ========== NOTIFICACIONES ==========
 game.StarterGui:SetCore("SendNotification", {
     Title = "Moveset",
-    Text = "Messi Moveset loaded!",
-    Duration = 5,
-    Button1 = "Ok",
-})
-
-task.wait(0.5)
-
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Made By",
-    Text = "tze",
-    Duration = 5,
-    Button1 = "Ok",
-})
-
-task.wait(0.5)
-
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Version script:",
-    Text = "v2 (PC + Mobile)",
+    Text = "Messi Moveset loaded! (PC + Mobile)",
     Duration = 5,
     Button1 = "Ok",
 })
