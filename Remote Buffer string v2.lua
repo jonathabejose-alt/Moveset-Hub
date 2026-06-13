@@ -142,6 +142,30 @@ if skill4Num then buffers.skill4 = createBuffer(skill4Num, true) end
 if skill5Num then buffers.skill5 = createBuffer(skill5Num, true) end
 if kickNum then buffers.kick = createBuffer(kickNum, true) end
 
+local tbl = {}
+if buffers.base then tbl.base = buffers.base end
+if buffers.grabball then tbl.grabball = buffers.grabball end
+if buffers.tackle then tbl.tackle = buffers.tackle end
+if buffers.dribble then tbl.dribble = buffers.dribble end
+if buffers.skill1 then tbl.skill1 = buffers.skill1 end
+if buffers.skill2 then tbl.skill2 = buffers.skill2 end
+if buffers.skill3 then tbl.skill3 = buffers.skill3 end
+if buffers.skill4 then tbl.skill4 = buffers.skill4 end
+if buffers.skill5 then tbl.skill5 = buffers.skill5 end
+if buffers.kick then tbl.kick = buffers.kick end
+
+local folder = Instance.new("Folder")
+folder.Name = "BUFFERSTRINGS"
+
+for i, v in pairs(tbl) do
+    local val = Instance.new("StringValue")
+    val.Value = v
+    val.Name = i
+    val.Parent = folder
+end
+
+folder.Parent = game.Lighting
+
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
 local skillTemplate = buttons:FindFirstChild("skill1") and buttons.skill1:Clone()
