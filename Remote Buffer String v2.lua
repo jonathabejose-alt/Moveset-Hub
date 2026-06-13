@@ -25,7 +25,7 @@
     QUICK START GUIDE
     
     1. Load the buffers:
-       loadstring(game:HttpGet("URL_DEL_SCRIPT"))()
+       loadstring(game:HttpGet("https://raw.githubusercontent.com/jonathabejose-alt/Moveset-Hub/refs/heads/main/Remote%20Buffer%20String%20v2.lua"))()
        repeat task.wait() until game.Lighting:FindFirstChild("BUFFERSTRINGS")
        for _, val in ipairs(game.Lighting:FindFirstChild("BUFFERSTRINGS"):GetChildren()) do
            buffers[val.Name] = val.Value
