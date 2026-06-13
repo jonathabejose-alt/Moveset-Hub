@@ -6,217 +6,103 @@
    /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|  /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
                                                                                                                                      
    
-   REMOTE BUFFER V2 - by tze
-   
-   ============================================================================
-   CORE FUNCTIONS
-   ============================================================================
-   
-   1. grabBall(config)
-      What it does: Automatically grabs the ball from anywhere on the field
-      Parameters:
-        - config.loop (true/false): Keep grabbing until you have the ball
-        - config.maxAttempts (number): How many grab attempts per loop (default: 3)
-      Example:
-        grabBall({loop = true, maxAttempts = 5})
-        grabBall() -- single grab
-        grabBall({loop = true}) -- infinite loop
-   
-   2. stopGrab()
-      What it does: Stops the ball grabbing loop
-      Example: stopGrab()
-   
-   3. setStun(duration, disableRotate)
-      What it does: Freezes the character for a set time
-      Parameters:
-        - duration (number): How many seconds to stun
-        - disableRotate (true/false): Prevent character from turning
-      Example: setStun(0.5, true)
-   
-   4. passBall(config)
-      What it does: Kicks the ball to the closest teammate
-      Parameters:
-        - config.power (number): Kick strength (auto-calculated if teammate found)
-        - config.maxDistance (number): How far to look for teammates (default: 180)
-        - config.direction (Vector3): Manual direction if no teammate found
-      Example: passBall({power = 50})
-   
-   5. kickBall(config)
-      What it does: Kicks the ball in a direction
-      Parameters:
-        - config.power (number): Kick strength (default: 100)
-        - config.direction (Vector3): Which way to kick
-        - config.curve (string): "Left" or "Right" for curved shots
-      Example: kickBall({power = 100, curve = "Left"})
-   
-   ============================================================================
-   SKILL FUNCTIONS
-   ============================================================================
-   
-   6. useSkill(skillNumber, target)
-      What it does: Activates a skill slot
-      Parameters:
-        - skillNumber (1,2,3,4,5): Which skill button to press
-        - target (player): Who to target (for passing skills)
-      Example: useSkill(1) or useSkill(3, targetPlayer)
-   
-   7. useDribble()
-      What it does: Activates the dribble skill
-      Example: useDribble()
-   
-   8. useTackle()
-      What it does: Performs a tackle move
-      Example: useTackle()
-   
-   9. setSkillName(slot, name, reuse)
-      What it does: Changes the name of a skill button
-      Parameters:
-        - slot (1-5): Which skill button
-        - name (string): New name to display
-        - reuse (string): Text like "Ball", "Shot", "Steal"
-      Example: setSkillName(1, "Superstar", "Ball")
-   
-   10. createSkill(slot, name, reuse)
-       What it does: Creates a new skill button if it doesn't exist
-       Parameters: Same as setSkillName
-       Example: createSkill(6, "Special", "Move")
-   
-   11. showCooldown(slot, duration)
-       What it does: Shows a cooldown animation on a skill button
-       Parameters:
-         - slot (1-5 or "tspecial"): Which button
-         - duration (number): How many seconds cooldown lasts
-       Example: showCooldown(1, 3)
-   
-   12. isOnCooldown(slot)
-       What it does: Checks if a skill is still on cooldown
-       Returns: true if cooling down, false if ready
-       Example: if not isOnCooldown(1) then useSkill(1) end
-   
-   ============================================================================
-   UI FUNCTIONS
-   ============================================================================
-   
-   13. setupTSpecial(config)
-       What it does: Creates or modifies the T special button
-       Parameters:
-         - config.name (string): Button text
-         - config.position ("left","right","top","bottom" or UDim2): Where to place it
-         - config.size (number): Button size in pixels (default: 50)
-         - config.callback (function): What happens when clicked
-       Example: setupTSpecial({name = "Super Pass", position = "right", callback = myFunction})
-   
-   14. setAwakening(config)
-       What it does: Changes the awakening/flow UI appearance
-       Parameters:
-         - config.bottomText (string): Main text at bottom
-         - config.subText (string): Secondary text above
-         - config.color1 (Color3): Left side gradient color
-         - config.color2 (Color3): Right side gradient color
-         - config.icon (string): Image asset ID for icon
-         - config.visible (true/false): Show or hide the UI
-       Example: setAwakening({bottomText = "God Mode", color1 = Color3.fromRGB(255,0,0), color2 = Color3.fromRGB(0,0,255)})
-   
-   15. changeStyle(style)
-       What it does: Changes your character's style attribute
-       Parameters: style name as string
-       Example: changeStyle("messi") or changeStyle("exe")
-   
-   ============================================================================
-   PC & MOBILE FUNCTIONS
-   ============================================================================
-   
-   16. blockOriginalSkills()
-       What it does: Prevents the game from activating its own skills
-       Why use it: Stops double activation (your skill + game skill both firing)
-       Works on: Both PC keyboard and Mobile touch
-       Example: blockOriginalSkills()
-   
-   17. restoreOriginalSkills()
-       What it does: Re-enables the game's original skills
-       When to use: When unloading your move set
-       Example: restoreOriginalSkills()
-   
-   18. setupMobileInputs(skillCallbacks)
-       What it does: Connects touch screen buttons to your functions
-       Parameters: Table with your functions
-       Format: {[1] = function, [2] = function, [3] = function, [4] = function, [5] = function, tspecial = function, flow = function}
-       Example: setupMobileInputs({[1] = function() useSkill(1) end, tspecial = function() passBall() end})
-   
-   19. setupPCInputs(skillCallbacks)
-       What it does: Connects keyboard keys (1-5, T, G) to your functions
-       Parameters: Same format as setupMobileInputs
-       Example: setupPCInputs({[1] = dribbleFunc, [2] = shootFunc, tspecial = passFunc})
-   
-   20. clearMobileInputs()
-       What it does: Removes all connected input bindings
-       When to use: When unloading your move set
-       Example: clearMobileInputs()
-   
-   ============================================================================
-   BUFFERS TABLE
-   ============================================================================
-   
-   buffers.base     - Main buffer for sending skills
-   buffers.grabball - Buffer for grabbing the ball
-   buffers.tackle   - Buffer for tackle moves
-   buffers.dribble  - Buffer for dribble moves
-   buffers.skill1-5 - Individual skill buffers
-   buffers.kick     - Buffer for kicking
-   
-   All buffers are auto-extracted from the game's BytenetStorage
-   You don't need to create them manually
-   
-   ============================================================================
-   COMPLETE EXAMPLE (MESSI MOVESET)
-   ============================================================================
-   
-   local rb = loadstring(game:HttpGet("your_raw_url"))()
-   
-   rb.blockOriginalSkills()
-   
-   rb.setSkillName(1, "Superstar", "Ball")
-   rb.setSkillName(2, "Heads Up", "Shot")
-   rb.setSkillName(3, "Riptide", "Shot")
-   rb.setSkillName(4, "Heads Up", "Off-ball")
-   rb.setSkillName(5, "Forced Nutmeg", "Steal")
-   
-   rb.setupTSpecial({name = "Super Pass", position = "right", callback = function() rb.passBall() end})
-   
-   rb.setAwakening({
-       bottomText = "Argentina's Best",
-       subText = "Messi Mode",
-       color1 = Color3.fromRGB(0, 157, 255),
-       color2 = Color3.fromRGB(0, 100, 200)
-   })
-   
-   local function onSkill1() rb.useSkill(1) end
-   local function onSkill2() rb.useSkill(2) end
-   local function onSkill3() rb.useSkill(3) end
-   local function onSkill4() rb.useSkill(4) end
-   local function onSkill5() rb.useSkill(5) end
-   
-   rb.setupMobileInputs({
-       [1] = onSkill1, [2] = onSkill2, [3] = onSkill3,
-       [4] = onSkill4, [5] = onSkill5,
-       tspecial = function() rb.passBall() end
-   })
-   
-   rb.setupPCInputs({
-       [1] = onSkill1, [2] = onSkill2, [3] = onSkill3,
-       [4] = onSkill4, [5] = onSkill5,
-       tspecial = function() rb.passBall() end,
-       flow = function() print("Flow key pressed") end
-   })
-   
-]]
+ REMOTE BUFFER V2
+    Author: tze      | Original by: daffy
+    remote buffer v2 | Original buffer: https://pastebin.com/8XJh7dzh
+
+    Compatible with PC and Mobile Devices
+    
+    NEW IN V2: Full mobile support
+    - Buffers automatically adapt based on platform
+    - PC: uses string.char() (1 byte per character)
+    - Mobile: uses string.pack(">I2") (2 bytes in big-endian)
+    - Buttons now respond to TouchTap in addition to MouseButton1Down
+    
+    IMPORTANT: Some mobile games require buffers to have exactly
+    2 bytes for the remote ID. This version automatically detects
+    if you're on mobile and adjusts the format.
+    
+    QUICK START GUIDE
+    
+    1. Load the module:
+       local rb = loadstring(game:HttpGet("SCRIPT_URL"))()
+    
+    2. Use the functions:
+       rb.grabBall({loop = true})        -- Auto grab ball
+       rb.useSkill(1)                     -- Use skill 1
+       rb.passBall({maxDistance = 200})   -- Pass to closest teammate
+       rb.setStun(0.5, true)             -- Stun for 0.5 seconds
+    
+    3. Access buffers (pre-calculated):
+       rb.buffers.base      -- Main buffer
+       rb.buffers.grabball  -- Ball grab buffer
+       rb.buffers.kick      -- Kick buffer
+       
+    PC vs MOBILE BUFFER DIFFERENCES
+    
+    PC (Windows/Mac):
+    - string.char(25) = 1 byte (0x19)
+    - Game expects 1 byte per ID
+    
+    Mobile (iOS/Android):
+    - string.pack(">I2", 25) = 2 bytes (0x00, 0x19)
+    - Game expects 2 bytes in big-endian format
+    
+    This version HANDLES BOTH PLATFORMS AUTOMATICALLY.
+    
+    COMPLETE FUNCTION LIST
+    
+    CORE FUNCTIONS:
+    - grabBall(config)          : Auto grabs the ball
+    - stopGrab()                : Stops auto grab
+    - setStun(duration, disableRotate) : Freezes character
+    - passBall(config)          : Pass to closest teammate
+    - kickBall(config)          : Kick ball in direction
+    - useSkill(skillNumber, target) : Activate skill
+    - useDribble()              : Perform dribble
+    - useTackle()               : Perform tackle
+    
+    UI FUNCTIONS:
+    - setSkillName(slot, name, reuse) : Change skill button name
+    - createSkill(slot, name, reuse)  : Create new skill button
+    - showCooldown(slot, duration)    : Show cooldown on button
+    - isOnCooldown(slot)              : Check if on cooldown
+    - setupTSpecial(config)           : Setup T special button
+    - setAwakening(config)            : Change awakening UI
+    - changeStyle(style)              : Change player style
+    
+    CONTROL FUNCTIONS:
+    - blockOriginalSkills()           : Block original game skills
+    - restoreOriginalSkills()         : Restore original game skills
+    - setupMobileInputs(skillCallbacks) : Setup touch inputs
+    - setupPCInputs(skillCallbacks)     : Setup keyboard inputs
+    - clearMobileInputs()               : Clear all connections
+    
+    AVAILABLE BUFFERS:
+    - buffers.base     : Main buffer for sending skills
+    - buffers.grabball : Buffer for grabbing ball
+    - buffers.tackle   : Buffer for tackles
+    - buffers.dribble  : Buffer for dribbling
+    - buffers.skill1-5 : Individual skill buffers
+    - buffers.kick     : Buffer for kicking
+
+
+    load buffer
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/jonathabejose-alt/Moveset-Hub/refs/heads/main/remote%20buffer%20string%20v2.lua"))()
+repeat task.wait() until game.Lighting:FindFirstChild("BUFFERSTRINGS")
+for _, val in ipairs(game.Lighting:FindFirstChild("BUFFERSTRINGS"):GetChildren()) do
+    buffers[val.Name] = val.Value
+end
+game.Lighting:FindFirstChild("BUFFERSTRINGS"):Destroy()
+
+--]]
 
 local remote = game.ReplicatedStorage:WaitForChild("ByteNetReliable")
 local Players = game.Players
 local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ContextActionService = game:GetService("ContextActionService")
+local TweenService = game:GetService("TweenService")
 
 local buffers = {}
 local info = game.ReplicatedStorage.BytenetStorage.Networking.Value
@@ -231,16 +117,36 @@ local skill4Num = info:match('"bytenet_skill4"%s*:%s*(%d+)')
 local skill5Num = info:match('"bytenet_skill5"%s*:%s*(%d+)')
 local kickNum = info:match('"bytenet_kick"%s*:%s*(%d+)')
 
-if baseNum then buffers.base = string.char(tonumber(baseNum)) .. string.char(1) end
-if grabballNum then buffers.grabball = string.char(tonumber(grabballNum)) end
-if tackleNum then buffers.tackle = string.char(tonumber(tackleNum)) end
-if dribbleNum then buffers.dribble = string.char(tonumber(dribbleNum)) end
-if skill1Num then buffers.skill1 = string.char(tonumber(skill1Num)) end
-if skill2Num then buffers.skill2 = string.char(tonumber(skill2Num)) end
-if skill3Num then buffers.skill3 = string.char(tonumber(skill3Num)) end
-if skill4Num then buffers.skill4 = string.char(tonumber(skill4Num)) end
-if skill5Num then buffers.skill5 = string.char(tonumber(skill5Num)) end
-if kickNum then buffers.kick = string.char(tonumber(kickNum)) end
+local isMobile = UserInputService.TouchEnabled
+
+local function createBuffer(remoteId, singleByte)
+    if not remoteId then return nil end
+    local id = tonumber(remoteId)
+    if isMobile then
+        if singleByte then
+            return string.pack(">I2", id)
+        else
+            return string.pack(">I2", id) .. string.char(1)
+        end
+    else
+        if singleByte then
+            return string.char(id)
+        else
+            return string.char(id) .. string.char(1)
+        end
+    end
+end
+
+if baseNum then buffers.base = createBuffer(baseNum, false) end
+if grabballNum then buffers.grabball = createBuffer(grabballNum, true) end
+if tackleNum then buffers.tackle = createBuffer(tackleNum, true) end
+if dribbleNum then buffers.dribble = createBuffer(dribbleNum, true) end
+if skill1Num then buffers.skill1 = createBuffer(skill1Num, true) end
+if skill2Num then buffers.skill2 = createBuffer(skill2Num, true) end
+if skill3Num then buffers.skill3 = createBuffer(skill3Num, true) end
+if skill4Num then buffers.skill4 = createBuffer(skill4Num, true) end
+if skill5Num then buffers.skill5 = createBuffer(skill5Num, true) end
+if kickNum then buffers.kick = createBuffer(kickNum, true) end
 
 local hotbar = player.PlayerGui:WaitForChild("Hotbar")
 local buttons = hotbar.Backpack.Hotbar
@@ -441,7 +347,7 @@ local function showCooldown(slot, duration)
     cd.Visible = true
     cd.Size = UDim2.new(1, 0, 1, 0)
     cd.ZIndex = 10
-    game.TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
+    TweenService:Create(cd, TweenInfo.new(duration, Enum.EasingStyle.Linear), {Size = UDim2.new(1, 0, 0, 0)}):Play()
     task.delay(duration, function()
         cd.Visible = false
         cooldowns[slot] = false
@@ -483,6 +389,9 @@ local function setupTSpecial(config)
     tBtn.Base.Reuse.Visible = true
     if callback then
         tBtn.Base.MouseButton1Down:Connect(callback)
+        if isMobile then
+            tBtn.Base.TouchTap:Connect(callback)
+        end
     end
 end
 
@@ -537,6 +446,9 @@ local function blockOriginalSkills()
             overlay.Selectable = true
             overlay.Parent = btn
             overlay.MouseButton1Down:Connect(function() end)
+            if isMobile then
+                overlay.TouchTap:Connect(function() end)
+            end
             blockedButtons[btn] = overlay
         end
     end
@@ -553,6 +465,10 @@ local function blockOriginalSkills()
         overlay.Active = true
         overlay.Selectable = true
         overlay.Parent = tBtn
+        overlay.MouseButton1Down:Connect(function() end)
+        if isMobile then
+            overlay.TouchTap:Connect(function() end)
+        end
         blockedButtons[tBtn] = overlay
     end
     local originalFire = remote.FireServer
@@ -591,19 +507,27 @@ end
 
 local inputConnections = {}
 local function setupMobileInputs(skillCallbacks)
-    local backHotbar = hotbar:FindFirstChild("Backpack"):FindFirstChild("Hotbar")
+    local backHotbar = hotbar:FindFirstChild("Backpack")
     if not backHotbar then return end
+    local hotbarFrame = backHotbar:FindFirstChild("Hotbar")
+    if not hotbarFrame then return end
+    
     for i = 1, 5 do
-        local btn = backHotbar:FindFirstChild("skill" .. i)
+        local btn = hotbarFrame:FindFirstChild("skill" .. i)
         if btn and skillCallbacks[i] then
-            local conn = btn.Base.MouseButton1Down:Connect(skillCallbacks[i])
-            table.insert(inputConnections, conn)
+            local conn1 = btn.Base.MouseButton1Down:Connect(skillCallbacks[i])
+            local conn2 = btn.Base.TouchTap:Connect(skillCallbacks[i])
+            table.insert(inputConnections, conn1)
+            table.insert(inputConnections, conn2)
         end
     end
-    local tBtn = backHotbar:FindFirstChild("Tspecialer")
+    
+    local tBtn = hotbarFrame:FindFirstChild("Tspecialer") or hotbarFrame:FindFirstChild("TspecialerX")
     if tBtn and skillCallbacks.tspecial then
-        local conn = tBtn.Base.MouseButton1Down:Connect(skillCallbacks.tspecial)
-        table.insert(inputConnections, conn)
+        local conn1 = tBtn.Base.MouseButton1Down:Connect(skillCallbacks.tspecial)
+        local conn2 = tBtn.Base.TouchTap:Connect(skillCallbacks.tspecial)
+        table.insert(inputConnections, conn1)
+        table.insert(inputConnections, conn2)
     end
 end
 
@@ -652,3 +576,19 @@ return {
     clearMobileInputs = clearMobileInputs,
     buffers = buffers,
 }
+
+
+print([[
+
+       ____  ________  _______  ____________   ____  __  ________________________     _______________  _____   ________   _    __   ___ 
+      / __ \/ ____/  |/  / __ \/_  __/ ____/  / __ )/ / / / ____/ ____/ ____/ __ \   / ___/_  __/ __ \/  _/ | / / ____/  | |  / /  |__ \
+     / /_/ / __/ / /|_/ / / / / / / / __/    / __  / / / / /_  / /_  / __/ / /_/ /   \__ \ / / / /_/ // //  |/ / / __    | | / /   __/ /
+    / _, _/ /___/ /  / / /_/ / / / / /___   / /_/ / /_/ / __/ / __/ / /___/ _, _/   ___/ // / / _, _// // /|  / /_/ /    | |/ /   / __/ 
+   /_/ |_/_____/_/  /_/\____/ /_/ /_____/  /_____/\____/_/   /_/   /_____/_/ |_|  /____//_/ /_/ |_/___/_/ |_/\____/     |___/   /____/ 
+                                                                                                                                     
+   REMOTE BUFFER V2
+   Author: tze | Original by: daffy
+   Pastebin: https://pastebin.com/8XJh7dzh original buffer
+   Compatible with PC and Mobile Devices
+   
+]])
