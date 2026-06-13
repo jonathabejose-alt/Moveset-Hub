@@ -24,19 +24,22 @@
     
     QUICK START GUIDE
     
-    1. Load the module:
-       local rb = loadstring(game:HttpGet("SCRIPT_URL"))()
+    1. Load the buffers:
+       loadstring(game:HttpGet("URL_DEL_SCRIPT"))()
+       repeat task.wait() until game.Lighting:FindFirstChild("BUFFERSTRINGS")
+       for _, val in ipairs(game.Lighting:FindFirstChild("BUFFERSTRINGS"):GetChildren()) do
+           buffers[val.Name] = val.Value
+       end
+       game.Lighting:FindFirstChild("BUFFERSTRINGS"):Destroy()
     
-    2. Use the functions:
-       rb.grabBall({loop = true})        -- Auto grab ball
-       rb.useSkill(1)                     -- Use skill 1
-       rb.passBall({maxDistance = 200})   -- Pass to closest teammate
-       rb.setStun(0.5, true)             -- Stun for 0.5 seconds
+    2. Use the buffers directly:
+       remote:FireServer(buffer.fromstring(buffers["base"]), {{"skill1"}})
+       remote:FireServer(buffer.fromstring(buffers["grabball"]))
+       remote:FireServer(buffer.fromstring(buffers["base"]), {{"kick", power, true, direction}})
     
-    3. Access buffers (pre-calculated):
-       rb.buffers.base      -- Main buffer
-       rb.buffers.grabball  -- Ball grab buffer
-       rb.buffers.kick      -- Kick buffer
+    3. Available buffers:
+       buffers.base      -- Main buffer for skills
+       buffers.grabball  -- Buffer for grabbing ball
        
     PC vs MOBILE BUFFER DIFFERENCES
     
@@ -85,15 +88,6 @@
     - buffers.dribble  : Buffer for dribbling
     - buffers.skill1-5 : Individual skill buffers
     - buffers.kick     : Buffer for kicking
-
-
-    load buffer
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/jonathabejose-alt/Moveset-Hub/refs/heads/main/remote%20buffer%20string%20v2.lua"))()
-repeat task.wait() until game.Lighting:FindFirstChild("BUFFERSTRINGS")
-for _, val in ipairs(game.Lighting:FindFirstChild("BUFFERSTRINGS"):GetChildren()) do
-    buffers[val.Name] = val.Value
-end
-game.Lighting:FindFirstChild("BUFFERSTRINGS"):Destroy()
 
 --]]
 
