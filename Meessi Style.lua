@@ -1,4 +1,5 @@
 -- I filtered the code because Script Blox keeps deleting my posts.
+-- btw, mobile device support and executor detection have been added and other shits
 local plr = game.Players.LocalPlayer
 local cam = game.Workspace.CurrentCamera
 local rep = game:GetService("ReplicatedStorage")
@@ -28,6 +29,41 @@ for _, val in ipairs(game.Lighting:FindFirstChild("BUFFERSTRINGS"):GetChildren()
     buffers[val.Name] = val.Value
 end
 game.Lighting:FindFirstChild("BUFFERSTRINGS"):Destroy()
+
+local function DetectExecutor()
+    local hasDebug = debug and (debug.getupvalue and debug.setupvalue)
+    local hasHook = hookmetamethod
+    
+    if hasDebug and hasHook then
+        local execName = identifyexecutor and identifyexecutor() or "Executor"
+        return true, execName
+    else
+        local execName = identifyexecutor and identifyexecutor() or "Unknown Executor"
+        return false, execName
+    end
+end
+
+local isFullExecutor, executorName = DetectExecutor()
+
+if not isFullExecutor then
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Not Support Executor",
+        Text = string.format("%s detected. Use a better executor to run this script.", executorName),
+        Duration = 5,
+        Button1 = "Ok",
+        Icon = "rbxassetid://75337362546331"
+    })
+    print("Not support executor detected: " .. executorName)
+else
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "Full Support",
+        Text = string.format("%s detected. Fully supported!", executorName),
+        Duration = 3,
+        Button1 = "Ok",
+        Icon = "rbxassetid://75337362546331"
+    })
+    print("Full executor detected: " .. executorName)
+end
 
 local blockedSounds = {
     "rbxassetid://133946857483198",
