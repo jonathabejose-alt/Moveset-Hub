@@ -1,3 +1,4 @@
+-- I filtered the code because Script Blox keeps deleting my posts.
 local plr = game.Players.LocalPlayer
 local cam = game.Workspace.CurrentCamera
 local rep = game:GetService("ReplicatedStorage")
@@ -172,7 +173,7 @@ local function Intercept()
     if dist > 300 then return end
     
     CancelMove()
-    DoCD("skill4", 3)
+    DoCD("skill4", 10)
     
     humanoid:LoadAnimation(anims.InterceptStart):Play()
     pcall(function() 
@@ -207,16 +208,16 @@ local function Intercept()
         PlaySFX(sounds.TrapCutscene, root)
         pcall(function() messiVFX.messiInterceptCutscene(char) end)
         
-        task.wait(1)
+        task.wait(0.8)
         
         root.Anchored = false
         root.AssemblyLinearVelocity = Vector3.new(0, -100, 0)
         humanoid.AutoRotate = true
         
-        task.delay(1.6, function() animBlock:Disconnect(); mainreplication.sceneEnabled(false) end)
+        task.delay(2.5, function() animBlock:Disconnect(); mainreplication.sceneEnabled(false) end)
     else
         char.state.stun.Value = true
-        task.delay(0.5, function() char.state.stun.Value = false end)
+        task.delay(1.5, function() char.state.stun.Value = false end)
     end
 end
 
@@ -269,7 +270,7 @@ local function MessiFlow()
     
     flowOnCD = true
     
-     task.wait(0.5)
+    task.wait(0.5)
      
     local songDuration = 60
     pcall(function()
@@ -279,8 +280,6 @@ local function MessiFlow()
             soundUtil:play(song, SoundService)
         end
     end)
-    
-   
     
     pcall(function() messiVFX.messiFlow(char) end)
     
@@ -362,6 +361,12 @@ local function Setup(char)
     buttons.skill4.Base.MouseButton1Down:Connect(Intercept)
     buttons.skill5.Base.MouseButton1Down:Connect(NutmegSteal)
 
+    buttons.skill1.Base.TouchTap:Connect(Dribble)
+    buttons.skill2.Base.TouchTap:Connect(TrapShot)
+    buttons.skill3.Base.TouchTap:Connect(Riptide)
+    buttons.skill4.Base.TouchTap:Connect(Intercept)
+    buttons.skill5.Base.TouchTap:Connect(NutmegSteal)
+
     buttons.skill1.Base.ToolName.Text = "Superstar"
     buttons.skill2.Base.ToolName.Text = "Heads Up"
     buttons.skill3.Base.ToolName.Text = "Riptide"
@@ -379,15 +384,17 @@ local function Setup(char)
         buttons["skill"..i].Visible = true
     end
 
-local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
-if tBtn and tBtn:FindFirstChild("Base") then
-    tBtn.Base.ToolName.Text = "Super Pass"
-    tBtn.Base.Reuse.Text = "Pass"
-    tBtn.Base.Reuse.Visible = true
-    tBtn.MouseButton1Click:Connect(SuperPass)
-end
+    local tBtn = hotbar.Backpack.Hotbar:FindFirstChild("Tspecialer")
+    if tBtn and tBtn:FindFirstChild("Base") then
+        tBtn.Base.ToolName.Text = "Super Pass"
+        tBtn.Base.Reuse.Text = "Pass"
+        tBtn.Base.Reuse.Visible = true
+        tBtn.MouseButton1Click:Connect(SuperPass)
+        tBtn.TouchTap:Connect(SuperPass)
+    end
 
-    hotbar.MagicHealth.Awakening.Text = "Argentina's Best"
+    hotbar.MagicHealth.Awakening.Text = "I like to win."
+    hotbar.MagicHealth.TextLabel.Text = "Argentina's Best."
     hotbar.MagicHealth.Health.Frame.UIGradient.Color = ColorSequence.new{
         ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 157, 255)),
         ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 157, 255))
@@ -399,6 +406,25 @@ end
             MessiFlow()
         end
     end)
+
+    local stopBtn = Instance.new("TextButton")
+    stopBtn.Size = UDim2.new(0, 70, 0, 30)
+    stopBtn.Position = UDim2.new(1, -80, 0, 10)
+    stopBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    stopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    stopBtn.TextScaled = true
+    stopBtn.Text = "STOP"
+    stopBtn.Parent = hotbar
+    stopBtn.ZIndex = 10
+
+    local function StopMoveset()
+        stopped = true
+        stopBtn.Visible = false
+        print("Moveset stopped")
+    end
+
+    stopBtn.MouseButton1Click:Connect(StopMoveset)
+    stopBtn.TouchTap:Connect(StopMoveset)
 end
 
 Setup(plr.Character)
@@ -417,7 +443,10 @@ UserInputService.InputBegan:Connect(function(input, bg)
     elseif input.KeyCode == Enum.KeyCode.Five then NutmegSteal()
     elseif input.KeyCode == Enum.KeyCode.T then SuperPass()
     elseif input.KeyCode == Enum.KeyCode.G then MessiFlow()
-    elseif input.KeyCode == Enum.KeyCode.F4 then stopped = true; print("stopped") end
+    elseif input.KeyCode == Enum.KeyCode.F4 then 
+        stopped = true
+        print("stopped")
+    end
 end)
 
 game.StarterGui:SetCore("SendNotification", {
@@ -427,10 +456,8 @@ game.StarterGui:SetCore("SendNotification", {
     Button1 = "Ok",
 })
 
+task.wait(0.5)
 
- task.wait(0.5)
-
- 
 game.StarterGui:SetCore("SendNotification", {
     Title = "Made By",
     Text = "tze",
@@ -438,7 +465,7 @@ game.StarterGui:SetCore("SendNotification", {
     Button1 = "Ok",
 })
 
- task.wait(0.5)
+task.wait(0.5)
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "Version script:",
