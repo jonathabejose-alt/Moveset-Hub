@@ -453,24 +453,14 @@ game.StarterGui:SetCore("SendNotification", {
     Title = "Moveset",
     Text = "Messi Moveset loaded!",
     Duration = 5,
-    Button1 = "Ok",
 })
 
 task.wait(0.5)
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "Made By",
-    Text = "tze",
+    Text = "tze | daffy",
     Duration = 5,
-    Button1 = "Ok",
 })
 
-task.wait(0.5)
-
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Version script:",
-    Text = "v1",
-    Duration = 5,
-    Button1 = "Ok",
-})
 print("Messi Moveset loaded!")
